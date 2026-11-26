@@ -24,6 +24,50 @@
 ##                                                   fixed effects + var
 ##                                                   components
 
+.confint_warn_unbounded <- function(out) {
+  if (is.null(out) || (!is.matrix(out) && !is.data.frame(out))) {
+    return(out)
+  }
+  mat <- as.matrix(out)
+  if (ncol(mat) < 2L || nrow(mat) < 1L) {
+    return(mat)
+  }
+  low <- mat[, 1L, drop = TRUE]
+  high <- mat[, 2L, drop = TRUE]
+  had_infinite <- (is.infinite(low) & low < 0) | (is.infinite(high) & high > 0)
+  if (any(had_infinite, na.rm = TRUE)) {
+    low[had_infinite] <- NA_real_
+    high[had_infinite] <- NA_real_
+    mat <- cbind(low, high)
+    colnames(mat) <- colnames(out)
+  }
+  unbounded <- is.na(low) | is.na(high)
+  if (any(unbounded, na.rm = TRUE)) {
+    terms <- rownames(mat)
+    bad <- if (length(terms) == nrow(mat)) {
+      terms[unbounded]
+    } else {
+      seq_along(low)[unbounded]
+    }
+    cli::cli_warn(c(
+      "{.fn confint} returned unbounded or missing interval limits for {?term/ terms} {.val {bad}}.",
+      "i" = "This often reflects an unidentified or boundary parameter, or a profile likelihood that did not bracket the cutoff within the search range.",
+      ">" = "Do not treat these as calibrated Wald limits; inspect {.fn check_gllvmTMB} and {.fn tidy} before reporting inference."
+    ), class = "gllvmTMB_confint_unbounded")
+  }
+  mat
+}
+
+.confint_finalize_matrix <- function(out, level) {
+  mat <- as.matrix(out)
+  rownames(mat) <- rownames(out)
+  colnames(mat) <- c(
+    sprintf("%.1f %%", 100 * (1 - level) / 2),
+    sprintf("%.1f %%", 100 * (1 + level) / 2)
+  )
+  .confint_warn_unbounded(mat)
+}
+
 ## Internal helper: accepted sigma-type parm tokens.
 .sigma_parm_tokens <- function() {
   c(
@@ -1370,11 +1414,7 @@
   }
   out <- cbind(lower, upper)
   rownames(out) <- chosen$parm
-  colnames(out) <- c(
-    sprintf("%.1f %%", 100 * (1 - level) / 2),
-    sprintf("%.1f %%", 100 * (1 + level) / 2)
-  )
-  out
+  .confint_finalize_matrix(out, level)
 }
 
 ## Internal helper (P1a 2026-05-15 follow-up; for coverage_study()
@@ -1415,7 +1455,7 @@
       which = if (is.na(row$index)) 1L else row$index
     )
     se <- tryCatch(
-      sqrt(diag(object$sd_report$cov.fixed))[idx],
+      .gllvmTMB_sdreport_se_index(object, idx),
       error = function(e) NA_real_
     )
     if (is.na(se) || !is.finite(se)) {
@@ -1429,11 +1469,7 @@
   }
   out <- cbind(lower, upper)
   rownames(out) <- chosen$parm
-  colnames(out) <- c(
-    sprintf("%.1f %%", 100 * (1 - level) / 2),
-    sprintf("%.1f %%", 100 * (1 + level) / 2)
-  )
-  out
+  .confint_finalize_matrix(out, level)
 }
 
 #' Confidence intervals for a fitted gllvmTMB model
@@ -1881,7 +1917,16 @@ confint.gllvmTMB_multi <- function(
   .confint_require_sdreport(object, method)
 
   if (method == "wald") {
-    td <- tidy(object, "fixed", conf.int = TRUE, conf.level = level)
+    td <- tidy(object, "fixed", conf.int = FALSE)
+    crit <- stats::qnorm((1 + level) / 2)
+    V <- vcov(object)
+    se_vcov <- sqrt(diag(V))
+    if (length(se_vcov) == nrow(td)) {
+      td$conf.low <- td$estimate - crit * se_vcov
+      td$conf.high <- td$estimate + crit * se_vcov
+    } else {
+      td <- tidy(object, "fixed", conf.int = TRUE, conf.level = level)
+    }
   } else if (method == "profile") {
     ## Resolve `parm` first so only the requested rows are profiled.
     rows <- if (!missing(parm)) {
@@ -1905,11 +1950,7 @@ confint.gllvmTMB_multi <- function(
   }
   out <- as.matrix(td[, c("conf.low", "conf.high")])
   rownames(out) <- td$term
-  colnames(out) <- c(
-    sprintf("%.1f %%", 100 * (1 - level) / 2),
-    sprintf("%.1f %%", 100 * (1 + level) / 2)
-  )
-  out
+  .confint_finalize_matrix(out, level)
 }
 
 ## ---- Sigma path: dispatch on method ---------------------------------------
@@ -2265,25 +2306,35 @@ confint.gllvmTMB_multi <- function(
   ## table) limits profiling to the requested terms; other rows get NA.
   ix <- which(names(object$opt$par) == "b_fix")
   bfix <- .gllvmTMB_b_fix_table(object)
-  free <- if ("status" %in% names(bfix)) {
-    bfix$status != "fixed"
-  } else {
-    rep(TRUE, nrow(bfix))
-  }
-  td <- tidy(object, "fixed", conf.int = TRUE, conf.level = level)
+  td <- tidy(object, "fixed", conf.int = FALSE)
   if (length(ix) == 0L) {
     ## No fixed effects -- return empty
     td$conf.low <- NA_real_
     td$conf.high <- NA_real_
     return(td)
   }
-  ## k_of_row: which b_fix entry each tidy row corresponds to (NA = none)
-  if (nrow(td) == length(free) && sum(free) == length(ix)) {
-    k_of_row <- ifelse(free, cumsum(free), NA_integer_)
-  } else if (nrow(td) == length(ix)) {
-    k_of_row <- seq_len(nrow(td))
-  } else {
+  k_of_row <- .gllvmTMB_b_fix_profile_which(object)
+  if (length(k_of_row) != nrow(td)) {
+    td$conf.low <- NA_real_
+    td$conf.high <- NA_real_
     return(td)
+  }
+  n_free <- sum(.gllvmTMB_xcoef_status(object) != "fixed")
+  if (n_free > 0L && length(ix) != n_free) {
+    cli::cli_warn(c(
+      "Profile fixed-effect intervals skipped: could not align {.field b_fix} entries in {.code opt$par} with free fixed-effect columns.",
+      "i" = "Expected {n_free} free coefficient{?s}; found {length(ix)} in {.code opt$par}.",
+      ">" = "Use {.code confint(fit, method = \"wald\")} for Wald limits that follow {.fn vcov}."
+    ), class = "gllvmTMB_confint_b_fix_alignment")
+    td$conf.low <- NA_real_
+    td$conf.high <- NA_real_
+    return(td)
+  }
+  if (anyNA(k_of_row) && any(!is.na(k_of_row))) {
+    cli::cli_warn(c(
+      "Profile intervals for mapped-out fixed-effect columns are omitted ({.field conf.low}/{.field conf.high} = {.code NA}).",
+      "i" = "Wald intervals from {.fn vcov} remain available via {.code method = \"wald\"}."
+    ), class = "gllvmTMB_confint_b_fix_alignment")
   }
   want <- if (is.null(rows)) seq_len(nrow(td)) else unique(rows)
   want <- want[!is.na(k_of_row[want])]

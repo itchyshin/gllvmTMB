@@ -27,15 +27,17 @@ test_that("a genuine crossing still interpolates a finite bound", {
   expect_equal(b$upper_status, "crossed")
 })
 
-test_that("an ASYMPTOTING profile reports an infinite bound, as before", {
+test_that("an ASYMPTOTING profile reports NA (not +/-Inf) with asymptotic status", {
   ## deviance saturates well below the threshold: a real unbounded direction
   p <- seq(-8, 8, by = 0.25)
   v <- 100 + 0.6 * (1 - exp(-abs(p)))          # -> 100.6, never reaches 100 + 1.92
   b <- gllvmTMB:::.profile_bounds(mk_prof(p, v), mle_val = 100, mle_par = 0, crit = 1.92)
-  expect_equal(b$lower, -Inf)
-  expect_equal(b$upper, Inf)
+  expect_true(is.na(b$lower))
+  expect_true(is.na(b$upper))
   expect_equal(b$lower_status, "asymptotic")
   expect_equal(b$upper_status, "asymptotic")
+  expect_false(is.infinite(b$lower))
+  expect_false(is.infinite(b$upper))
 })
 
 test_that("a TRUNCATED profile reports NA, not Inf -- the bound is unknown", {
@@ -59,6 +61,6 @@ test_that("the two non-crossing terminuses are not confused with each other", {
   trunc <- gllvmTMB:::.profile_bounds(
     mk_prof(seq(-1.5, 1.5, by = 0.25), 100 + 0.5 * seq(-1.5, 1.5, by = 0.25)^2), 100, 0, 1.92)
   expect_false(identical(asym$upper_status, trunc$upper_status))
-  expect_true(is.infinite(asym$upper))
+  expect_true(is.na(asym$upper))
   expect_true(is.na(trunc$upper))
 })

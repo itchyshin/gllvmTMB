@@ -180,13 +180,72 @@ kernel_scalar <- function(unit, K, name = "kernel") {
   NA_character_
 }
 
+.gllvmTMB_keyword_base_name <- function(fn) {
+  fn <- as.character(fn)[1L]
+  if (is.na(fn) || !nzchar(fn)) {
+    return(NA_character_)
+  }
+  sub("^[^:]*:+", "", fn)
+}
+
+.gllvmTMB_keyword_bare_symbol <- function(arg) {
+  if (is.symbol(arg)) {
+    return(as.character(arg))
+  }
+  if (is.character(arg) && length(arg) == 1L && !is.na(arg)) {
+    return(arg)
+  }
+  NA_character_
+}
+
+.gllvmTMB_keyword_match_call <- function(fn, e) {
+  fn <- .gllvmTMB_keyword_base_name(fn)
+  if (is.na(fn)) {
+    return(NULL)
+  }
+  tryCatch(
+    match.call(get(fn, envir = asNamespace("gllvmTMB")), e),
+    error = function(err) NULL
+  )
+}
+
+.gllvmTMB_keyword_group_arg <- function(matched, e,
+                                        group_fields = c("unit", "species", "id")) {
+  if (!is.null(matched)) {
+    for (fld in group_fields) {
+      if (!is.null(matched[[fld]])) {
+        sym <- .gllvmTMB_keyword_bare_symbol(matched[[fld]])
+        if (!is.na(sym)) {
+          return(sym)
+        }
+      }
+    }
+  }
+  nms <- names(e)
+  if (!is.null(nms)) {
+    for (fld in group_fields) {
+      idx <- match(fld, nms)
+      if (!is.na(idx)) {
+        sym <- .gllvmTMB_keyword_bare_symbol(e[[idx]])
+        if (!is.na(sym)) {
+          return(sym)
+        }
+      }
+    }
+  }
+  if (length(e) >= 2L) {
+    return(.gllvmTMB_keyword_bare_symbol(e[[2L]]))
+  }
+  NA_character_
+}
+
 .gllvmTMB_keyword_bare_groups <- function(formula, keywords, bar_keywords) {
   found <- list()
   walk <- function(e) {
     if (!is.call(e)) return(invisible(NULL))
-    fn <- as.character(e[[1L]])[1L]
+    fn <- .gllvmTMB_keyword_base_name(e[[1L]])
     if (!is.na(fn) && fn %in% keywords && length(e) >= 2L) {
-      matched <- tryCatch(match.call(get(fn), e), error = function(err) NULL)
+      matched <- .gllvmTMB_keyword_match_call(fn, e)
       group <- NA_character_
       if (fn %in% bar_keywords) {
         formula_expr <- if (!is.null(matched) && !is.null(matched$formula)) {
@@ -200,24 +259,7 @@ kernel_scalar <- function(unit, K, name = "kernel") {
           group <- .gllvmTMB_lme4_bar_rhs(formula_expr)
         }
       } else {
-        arg <- if (!is.null(matched) && !is.null(matched$unit)) {
-          matched$unit
-        } else if (!is.null(matched) && !is.null(matched$species)) {
-          matched$species
-        } else if (!is.null(matched) && !is.null(matched$id)) {
-          matched$id
-        } else if (length(e) >= 2L) {
-          e[[2L]]
-        } else {
-          NULL
-        }
-        group <- if (is.symbol(arg)) {
-          as.character(arg)
-        } else if (is.character(arg) && length(arg) == 1L && !is.na(arg)) {
-          arg
-        } else {
-          NA_character_
-        }
+        group <- .gllvmTMB_keyword_group_arg(matched, e)
       }
       if (!is.na(group) && nzchar(group)) {
         found[[length(found) + 1L]] <<- list(fn = fn, group = group)

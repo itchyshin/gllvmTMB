@@ -6,6 +6,37 @@
 ## extractors so the API surface matches the canonical GLLVM
 ## software while keeping our internals long-format.
 
+.gllvmTMB_rotation_hint_id <- function(fit, level) {
+  paste0(
+    "gllvmTMB-rotation-hint:",
+    .gllvmTMB_runaway_signature(fit),
+    ":",
+    level
+  )
+}
+
+.gllvmTMB_rotation_hint_shown <- function(fit, level) {
+  id <- .gllvmTMB_rotation_hint_id(fit, level)
+  isTRUE(get0(id, envir = .gllvmTMB_state$rotation_hints, ifnotfound = FALSE))
+}
+
+.gllvmTMB_mark_rotation_hint_shown <- function(fit, level) {
+  assign(
+    .gllvmTMB_rotation_hint_id(fit, level),
+    TRUE,
+    envir = .gllvmTMB_state$rotation_hints
+  )
+  invisible(NULL)
+}
+
+.gllvmTMB_reset_rotation_hints <- function() {
+  rm(
+    list = ls(envir = .gllvmTMB_state$rotation_hints),
+    envir = .gllvmTMB_state$rotation_hints
+  )
+  invisible(NULL)
+}
+
 #' Extract the loading matrix from a fitted multivariate model
 #'
 #' Returns the trait loading matrix from a fit returned by [gllvmTMB()]. This
@@ -76,7 +107,7 @@ getLoadings <- function(
   ## still identifiable; Lambda alone is not.
   if (rotate == "none") {
     advisory <- isTRUE(fit$needs_rotation_advice[[level]])
-    shown <- isTRUE(attr(fit, ".rotation_hint_shown")[[level]])
+    shown <- .gllvmTMB_rotation_hint_shown(fit, level)
     if (advisory && !shown) {
       cli::cli_inform(c(
         "i" = "{.code Lambda_{level}} is identified only up to rotation (d_{level} = {fit[[paste0('d_', level)]]}).",
@@ -84,18 +115,7 @@ getLoadings <- function(
         "*" = "see {.fn suggest_lambda_constraint} for a default {.arg lambda_constraint} matrix to pass to a refit.",
         "*" = "{.fn extract_Sigma_{level}} is rotation-invariant and does not need this."
       ))
-      shown_levels <- attr(fit, ".rotation_hint_shown") %||% list()
-      shown_levels[[level]] <- TRUE
-      fit_marked <- structure(fit, .rotation_hint_shown = shown_levels)
-      fit_sym <- sys.call()[[2L]]
-      if (is.name(fit_sym)) {
-        pf <- parent.frame()
-        nm <- as.character(fit_sym)
-        if (exists(nm, envir = pf, inherits = FALSE) &&
-            identical(get(nm, envir = pf, inherits = FALSE), fit)) {
-          assign(nm, fit_marked, envir = pf)
-        }
-      }
+      .gllvmTMB_mark_rotation_hint_shown(fit, level)
     }
   }
   ord <- extract_ordination(fit, level = .canonical_level_name(level))

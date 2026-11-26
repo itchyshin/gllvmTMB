@@ -8,6 +8,10 @@
 #' @keywords internal
 "_PACKAGE"
 
+## Session-scoped package state (one-shot advisories, keyed per fit).
+.gllvmTMB_state <- new.env(parent = emptyenv())
+.gllvmTMB_state$rotation_hints <- new.env(parent = emptyenv())
+
 .onAttach <- function(libname, pkgname) {
   packageStartupMessage(
     "gllvmTMB is experimental. Use a documented tutorial, inspect fit ",

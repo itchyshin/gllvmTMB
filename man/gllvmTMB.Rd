@@ -25,6 +25,7 @@ gllvmTMB(
   missing = miss_control(),
   impute = NULL,
   silent = TRUE,
+  repeated_measures = FALSE,
   engine = c("tmb", "julia"),
   ci_method = c("none", "wald", "profile", "bootstrap"),
   ci_level = 0.95,
@@ -342,6 +343,15 @@ predictor-model formula (for Gaussian sugar, e.g. \code{x ~ z}) or an
 \code{NULL} is appropriate when no \code{mi()} term is present.}
 
 \item{silent}{Logical; suppress TMB and gllvmTMB chatter. Default \code{TRUE}.}
+
+\item{repeated_measures}{Logical; default \code{FALSE}. When \code{FALSE},
+\code{\link[=gllvmTMB]{gllvmTMB()}} stops before fitting if two or more rows share the same
+observation key (\code{unit}, \code{trait}, and \code{unit_obs}). Accidental
+duplicates (for example from \code{rbind()}) inflate \code{\link[=nobs]{nobs()}} without
+changing the stacked design. Set \code{TRUE} only when multiple rows per key
+are intentional; for within-unit replicates, give each measurement a
+distinct \code{unit_obs} level when the model uses a within-unit covariance
+keyword.}
 
 \item{engine}{Character; \code{"tmb"} (default) fits with the native TMB engine,
 \code{"julia"} routes the fit through the experimental GLLVModels.jl bridge via

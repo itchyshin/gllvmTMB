@@ -382,6 +382,14 @@
 #'   [impute_model()] object for an explicit predictor family. The default
 #'   `NULL` is appropriate when no `mi()` term is present.
 #' @param silent Logical; suppress TMB and gllvmTMB chatter. Default `TRUE`.
+#' @param repeated_measures Logical; default `FALSE`. When `FALSE`,
+#'   [gllvmTMB()] stops before fitting if two or more rows share the same
+#'   observation key (`unit`, `trait`, and `unit_obs`). Accidental
+#'   duplicates (for example from `rbind()`) inflate [nobs()] without
+#'   changing the stacked design. Set `TRUE` only when multiple rows per key
+#'   are intentional; for within-unit replicates, give each measurement a
+#'   distinct `unit_obs` level when the model uses a within-unit covariance
+#'   keyword.
 #' @param engine Character; `"tmb"` (default) fits with the native TMB engine,
 #'   `"julia"` routes the fit through the experimental GLLVModels.jl bridge via
 #'   JuliaCall. The Julia path currently maps
@@ -805,6 +813,7 @@ gllvmTMB <- function(
   missing = miss_control(),
   impute = NULL,
   silent = TRUE,
+  repeated_measures = FALSE,
   engine = c("tmb", "julia"),
   ci_method = c("none", "wald", "profile", "bootstrap"),
   ci_level = 0.95,
@@ -1144,7 +1153,8 @@ gllvmTMB <- function(
       ci_nboot = ci_nboot,
       ci_seed = ci_seed,
       site = site,
-      species = species
+      species = species,
+      repeated_measures = repeated_measures
     )
     ## Keep genuinely omitted / NULL optional slots omitted in the recursive
     ## long-format call. Otherwise their resolved defaults would incorrectly
@@ -1419,7 +1429,8 @@ gllvmTMB <- function(
   if (!is.factor(data[[site]])) {
     data[[site]] <- factor(data[[site]])
   }
-  if (species %in% names(data)) {
+  species_was_real <- species %in% names(data)
+  if (species_was_real) {
     if (!is.factor(data[[species]])) data[[species]] <- factor(data[[species]])
   } else {
     ## site-level data (e.g. Stage 6 stage-2): synthesise a species column
@@ -1446,6 +1457,15 @@ gllvmTMB <- function(
   if (!is.factor(data[[unit_obs]])) {
     data[[unit_obs]] <- factor(data[[unit_obs]])
   }
+  .gllvmTMB_check_duplicate_observation_keys(
+    data = data,
+    unit = site,
+    trait = trait,
+    unit_obs = unit_obs,
+    species = species,
+    species_was_real = species_was_real,
+    repeated_measures = repeated_measures
+  )
 
   ## Design 131: validate and unwrap shared fixed effects, then parse
   ## response-column coefficient markers. All five public sources are rewritten
@@ -3776,4 +3796,27 @@ detect_covstruct_terms <- function(formula) {
   }
   walk(rhs)
   unique(found)
+}
+
+## Refuse accidental duplicate long-format observation keys (#1907). Genuine
+## repeated measures should distinguish replicates via `unit_obs`; set
+## `repeated_measures = TRUE` only when duplicate keys are deliberate.
+.gllvmTMB_check_duplicate_observation_keys <- function(
+    data, unit, trait, unit_obs, species = NULL, species_was_real = FALSE,
+    repeated_measures = FALSE) {
+  key_cols <- intersect(c(unit, trait, unit_obs), names(data))
+  if (isTRUE(species_was_real) && !is.null(species) && species %in% names(data)) {
+    key_cols <- unique(c(key_cols, species))
+  }
+  if (length(key_cols) < 2L) return(invisible(NULL))
+  dup <- duplicated(data[key_cols])
+  if (!any(dup)) return(invisible(NULL))
+  if (isTRUE(repeated_measures)) return(invisible(NULL))
+  n_dup <- sum(dup)
+  cli::cli_abort(c(
+    "Duplicate observation keys in {.arg data}.",
+    "x" = "{n_dup} row{?s} share the same {.field {key_cols}} combination.",
+    "i" = "Each row should identify one stacked response; accidental duplicates inflate {.fn nobs} without changing the design.",
+    ">" = "Remove duplicate rows, or set {.code repeated_measures = TRUE} when multiple rows per key are intentional (use a distinct {.arg unit_obs} level for within-unit replicates)."
+  ), class = "gllvmTMB_duplicate_observation_keys")
 }

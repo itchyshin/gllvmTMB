@@ -16,6 +16,9 @@
 #' covariance matrix, taken from the fit's TMB `sdreport()`.
 #'
 #' @param object A fitted multivariate model returned by [gllvmTMB()].
+#' @param corr If `TRUE`, return the correlation matrix of the fixed-effect
+#'   estimates ([stats::cov2cor()]) with the same names; if `FALSE` (default),
+#'   return the Wald covariance matrix.
 #' @param ... Ignored, present for S3 consistency.
 #'
 #' @return
@@ -110,7 +113,7 @@ coef.gllvmTMB_multi <- function(object, ...) {
 
 #' @rdname gllvmTMB_multi-vcov
 #' @export
-vcov.gllvmTMB_multi <- function(object, ...) {
+vcov.gllvmTMB_multi <- function(object, corr = FALSE, ...) {
   .gllvmTMB_mspl_assert_inference(object, "vcov")
   .gllvmTMB_require_unweighted_inference(object, "vcov", prior_curvature = TRUE)
   nm <- object$X_fix_names %||% character(0)
@@ -148,6 +151,15 @@ vcov.gllvmTMB_multi <- function(object, ...) {
   } else if (length(idx) >= length(nm)) {
     keep <- idx[seq_along(nm)]
     out[] <- cv[keep, keep, drop = FALSE]
+  }
+  if (isTRUE(corr)) {
+    dn <- dimnames(out)
+    inf_status <- attr(out, "inference_status")
+    out <- stats::cov2cor(out)
+    dimnames(out) <- dn
+    if (!is.null(inf_status)) {
+      attr(out, "inference_status") <- inf_status
+    }
   }
   out
 }

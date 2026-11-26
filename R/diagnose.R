@@ -12,6 +12,28 @@
 ## inference diagnostic rather than part of this point-stationarity flag.
 .gllvmTMB_converged_gtol <- 1e-2
 
+## TMB may report `pdHess = TRUE` while every fixed-effect variance in
+## `cov.fixed` is non-finite (weakly identified / degenerate curvature at an
+## otherwise converged optimum; #1903). Downstream Wald machinery treats that
+## pattern as non-PD (see `.confint_require_sdreport()`); fit health and
+## sanity diagnostics must agree.
+.gllvmTMB_pd_hessian <- function(object) {
+  if (is.null(object$sd_report)) {
+    return(NA)
+  }
+  if (is.null(object$sd_report$pdHess)) {
+    return(NA)
+  }
+  if (!isTRUE(object$sd_report$pdHess)) {
+    return(FALSE)
+  }
+  cv <- tryCatch(object$sd_report$cov.fixed, error = function(e) NULL)
+  if (is.null(cv) || length(cv) == 0L) {
+    return(FALSE)
+  }
+  any(is.finite(diag(as.matrix(cv))))
+}
+
 .gllvmTMB_build_fit_health <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
     .gllvmTMB_abort_not_multi_fit(object)
@@ -104,14 +126,7 @@
     optimizer_converged = optimizer_converged,
     converged = converged,
     premature_termination = premature_termination,
-    pd_hessian = if (
-      !is.null(object$sd_report) &&
-        !is.null(object$sd_report$pdHess)
-    ) {
-      isTRUE(object$sd_report$pdHess)
-    } else {
-      NA
-    },
+    pd_hessian = .gllvmTMB_pd_hessian(object),
     sdreport_ok = !is.null(object$sd_report),
     sdreport_error = object$sdreport_error %||% NA_character_,
     max_fixed_se = max_se,

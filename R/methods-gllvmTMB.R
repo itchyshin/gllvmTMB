@@ -2785,10 +2785,10 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   }
   pd <- if (is_mspl) {
     NA
+  } else if (!sdreport_ok) {
+    FALSE
   } else {
-    sdreport_ok &&
-      !is.null(object$sd_report$pdHess) &&
-      object$sd_report$pdHess
+    .gllvmTMB_pd_hessian(object)
   }
   flags$pd_hessian <- pd
   cat(sprintf(

@@ -1200,6 +1200,7 @@ Type objective_function<Type>::operator()()
   // unit count N for c_N = sqrt(2/N). Bernoulli / ML supply length-1 stubs.
   DATA_VECTOR(mspl_S_diag);
   DATA_INTEGER(mspl_N_units);
+  DATA_SCALAR(mspl_c_n_multiplier); // private positive MSPL scale; 1 preserves the base rate
 
   // ordinal_probit (fid 14): per-trait cutpoint metadata.
   // n_ordinal_cuts_per_trait(t)  = K_t - 2, the number of FREE cutpoints
@@ -4795,7 +4796,7 @@ Type objective_function<Type>::operator()()
       for (int t = 0; t < n_traits; ++t)
         psi(t) = exp(Type(2.0) * theta_diag_B(t));
       mspl_V_hirose = gll_mspl_hirose_atom(mspl_S_diag, psi);
-      mspl_c_n = sqrt(Type(2.0) / Type(mspl_N_units));
+      mspl_c_n = sqrt(Type(2.0) / Type(mspl_N_units)) * mspl_c_n_multiplier;
       mspl_hirose_nll = mspl_c_n * mspl_V_hirose;
       mspl_atom_status = Type(0.0);
       nll += mspl_hirose_nll;
@@ -4814,6 +4815,7 @@ Type objective_function<Type>::operator()()
         mspl_c_n = Type(2.0) * sqrt(Type(p_free) / event_count);
       } else
         mspl_c_n = Type(1.0);
+      mspl_c_n *= mspl_c_n_multiplier;
       vector<Type> mspl_logw(N_eff);
       int link_id = link_id_vec(0);
       int fid = family_id_vec(0);

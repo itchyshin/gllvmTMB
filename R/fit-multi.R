@@ -8232,6 +8232,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   tmb_data$mspl_tau_representative <- as.integer(-1L)
   tmb_data$mspl_S_diag <- 0
   tmb_data$mspl_N_units <- 0L
+  tmb_data$mspl_c_n_multiplier <- 1
   if (identical(estimator, "mspl")) {
     mspl_info <- .gllvmTMB_mspl_prepare(
       X_fix = X_fix,
@@ -8272,7 +8273,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ridge_explicit = control$aghq_ridge_explicit,
       unit_id = site_id,
       trait_id = trait_id,
-      sigma_eps_mapped = !is.null(tmb_map$log_sigma_eps)
+      sigma_eps_mapped = !is.null(tmb_map$log_sigma_eps),
+      mspl_c_n_multiplier = control[["mspl_c_n_multiplier"]] %||% 1
     )
     tmb_data$estimator_id <- .gllvmTMB_estimator_id_for_tape(estimator_prov)
     tmb_data$X_mspl <- mspl_info$X_mspl
@@ -8282,6 +8284,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_data$mspl_tau_representative <- mspl_info$tau_representative
     tmb_data$mspl_S_diag <- mspl_info$mspl_S_diag
     tmb_data$mspl_N_units <- as.integer(mspl_info$mspl_N_units)
+    tmb_data$mspl_c_n_multiplier <- mspl_info$mspl_c_n_multiplier
   } else {
     tmb_data$estimator_id <- .gllvmTMB_estimator_id_for_tape(estimator_prov)
     tmb_data$X_mspl <- matrix(0, nrow = 1L, ncol = 1L)

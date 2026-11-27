@@ -1,5 +1,6 @@
 # gllvmTMB 0.8.0
 
+* `select_lv()` now warns and marks rows in its return table when a swept rank reaches the same `logLik` as a smaller rank, so plateaus from rank saturation are visible instead of looking like a better ordination (refs #1989).
 * `simulate()` now stops when the stored per-row binomial trial-count vector length does not match the model rows, and `engine = "julia"` fits refuse a `N` matrix that is not traits x units. Correctly sized trial counts are unchanged (refs #1865).
 * `known_sigma_eps = 0` is now admitted for a narrowly defined native TMB Gaussian model with exactly two named `kernel_latent(..., unique = TRUE)` tiers, one observation per unit-trait cell, trait-specific intercepts, unit weights, and unpenalized ML with Laplace integration. The likelihood uses the supplied kernels without a diagonal floor and omits the observation-error covariance exactly. One-kernel, Julia, non-Gaussian, predictor, offset, prior, penalty, and non-unit-weight variants remain unsupported. Initial fixed-seed fits show substantial component-recovery error, so this route is experimental; interval calibration and broad recovery are not established.
 

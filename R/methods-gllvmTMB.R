@@ -1813,7 +1813,8 @@ tidy.gllvmTMB_multi <- function(
 #'   the stored latent modes at the fitted parameters. Forced to
 #'   `TRUE` when `newdata` is supplied (RE modes for unseen levels
 #'   cannot be redrawn).
-#' @param ... Currently unused.
+#' @param ... Unused. Named arguments (for example `family`) trigger a one-shot
+#'   classed warning; [simulate()] always uses the fitted per-row famil(ies).
 #'
 #' @return A matrix of dimension `n_obs x nsim` (or `nrow(newdata) x nsim`
 #'   when `newdata` is supplied). **Per-row family coverage (#1079):** rows
@@ -1839,6 +1840,7 @@ simulate.gllvmTMB_multi <- function(
   condition_on_RE = FALSE,
   ...
 ) {
+  .gllvmTMB_simulate_warn_unused(list(...))
   nsim_value <- suppressWarnings(as.numeric(nsim))
   if (
     length(nsim) != 1L ||
@@ -1977,6 +1979,28 @@ simulate.gllvmTMB_multi <- function(
     out <- as.matrix(out)
   }
   out
+}
+
+#' Warn about arguments that `simulate()` received in `...` and ignored (#2004).
+#' @keywords internal
+#' @noRd
+.gllvmTMB_simulate_warn_unused <- function(dots) {
+  if (length(dots) == 0L) return(invisible(NULL))
+  nm <- names(dots)
+  if (is.null(nm)) nm <- rep("", length(dots))
+  items <- ifelse(nzchar(nm), nm, "<unnamed>")
+  bullets <- vapply(items, function(item) {
+    sprintf("`%s` is not an argument of simulate() and was ignored.", item)
+  }, character(1))
+  msg <- c(
+    "{.fn simulate} ignored {length(items)} unused argument{?s} passed in {.arg ...}.",
+    stats::setNames(gsub("([{}])", "\\1\\1", bullets), rep("!", length(bullets)))
+  )
+  if ("family" %in% items) {
+    msg <- c(msg, "i" = "{.fn simulate} always uses the fitted per-row famil{?ies}.")
+  }
+  cli::cli_warn(msg, class = "gllvmTMB_simulate_unused_arg")
+  invisible(NULL)
 }
 
 #' Draw one Gaussian response vector from a temporal-source fit

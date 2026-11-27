@@ -848,6 +848,20 @@
 ## levels with zero observations. Distinguish that case (actionable:
 ## droplevels()) from a genuine coverage gap in a species that IS observed
 ## (not fixable by droplevels -- the tree/vcv itself is incomplete).
+.gllvm_is_sim_index_species_levels <- function(levs) {
+  if (!length(levs)) {
+    return(FALSE)
+  }
+  if (!all(grepl("^[0-9]+$", levs))) {
+    return(FALSE)
+  }
+  nums <- suppressWarnings(as.integer(levs))
+  if (anyNA(nums)) {
+    return(FALSE)
+  }
+  identical(sort(nums), seq_len(length(levs)))
+}
+
 .gllvm_abort_uncovered_species_levels <- function(levs, covered, data, species, what,
                                                   level_word = "species",
                                                   mismatch_tail = NULL) {
@@ -897,6 +911,31 @@
       )
     }
     bullets <- c(bullets, "i" = observed_line)
+  }
+  if (length(observed_missing) &&
+      length(intersect(levs, covered)) == 0L &&
+      .gllvm_is_sim_index_species_levels(levs)) {
+    n <- length(levs)
+    vcv_names <- paste(head(covered, min(3L, length(covered))), collapse = ", ")
+    if (length(covered) > 3L) {
+      vcv_names <- paste0(vcv_names, ", ...")
+    }
+    bullets <- c(
+      bullets,
+      "i" = sprintf(
+        "`%s` levels are the integer index \"1\"..\"%d\" but the supplied phylogeny names are: %s.",
+        species, n, vcv_names
+      ),
+      ">" = paste(
+        "`simulate_site_trait()` does not copy `rownames(Cphy)` onto `data$species`.",
+        "Align names before fitting, for example",
+        sprintf(
+          "`rownames(phylo_vcv) <- colnames(phylo_vcv) <- as.character(seq_len(%dL))`,",
+          n
+        ),
+        "or relabel `data$species` to match `rownames(phylo_vcv)` / `tree$tip.label`."
+      )
+    )
   }
   cli::cli_abort(bullets)
 }

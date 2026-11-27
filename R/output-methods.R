@@ -385,7 +385,9 @@ getLV <- function(
 #' Returns the implied trait covariance at `level = "unit"` or
 #' `level = "unit_obs"`. For a reduced-rank plus unique tier this is
 #' \eqn{\Sigma_X = \Lambda_X \Lambda_X^\top + \Psi_X}. `getResidualCor()`
-#' returns the corresponding correlation matrix. The canonical snake_case
+#' returns the corresponding correlation matrix, using the same
+#' per-trait link-residual convention as [extract_correlations()] (`link_residual = "auto"`).
+#' The canonical snake_case
 #' spellings in this package are [extract_residual_cov()] and
 #' [extract_residual_cor()], which forward here.
 #'

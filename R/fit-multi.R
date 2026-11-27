@@ -1432,6 +1432,24 @@
   invisible(NULL)
 }
 
+## Issue #1952: a unit (between-row) factor with declared levels that have no
+## rows is counted by nlevels(), which allocates latent scores / RE tiers for
+## phantom units (getLV() / ordiplot list zero scores). Abort and name the
+## empty level(s) rather than silently keeping them.
+.abort_empty_unit_levels <- function(data, unit) {
+  x <- data[[unit]]
+  if (!is.factor(x)) return(invisible(NULL))
+  empty <- setdiff(levels(x), as.character(unique(x[!is.na(x)])))
+  if (length(empty)) {
+    cli::cli_abort(c(
+      "Unit column {.field {unit}} has {length(empty)} level{?s} with no rows in {.arg data}: {.val {empty}}.",
+      "i" = "Every declared level counts as a unit, so an empty level adds latent dimensions and random-effect slots that no data inform.",
+      ">" = "Call {.code droplevels()} on the {.field {unit}} column before fitting, so its levels match the units actually observed."
+    ), class = "gllvmTMB_empty_unit_level")
+  }
+  invisible(NULL)
+}
+
 .abort_one_level_fixed_factors <- function(mf) {
   tt <- stats::terms(mf)
   resp_idx <- attr(tt, "response")
@@ -2140,6 +2158,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## phylo_unique d = n_traits resolution below (which used to be the only
   ## consumer of trait-count-aware rank values).
   .abort_empty_trait_levels(data, trait)
+  .abort_empty_unit_levels(data, site)
   .n_traits_for_dep <- nlevels(if (is.factor(data[[trait]])) data[[trait]]
                                else factor(data[[trait]]))
   for (i in seq_along(parsed$covstructs)) {
@@ -3571,6 +3590,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!is.factor(data[[ss_name]])) data[[ss_name]] <- factor(data[[ss_name]])
 
   .abort_empty_trait_levels(data, trait)
+  .abort_empty_unit_levels(data, site)
   n_traits        <- nlevels(data[[trait]])
   n_sites         <- nlevels(data[[site]])
   n_site_species  <- nlevels(data[[ss_name]])

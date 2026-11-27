@@ -38,7 +38,7 @@ extract_Sigma_B <- function(fit) {
 }
 
 .extract_Sigma_legacy_payload <- function(fit, level) {
-  out <- extract_Sigma(fit, level = level, part = "total", link_residual = "none")
+  out <- extract_Sigma(fit, level = level, part = "total", link_residual = "auto")
   if (is.null(out)) {
     return(NULL)
   }

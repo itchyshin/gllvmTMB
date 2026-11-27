@@ -2408,16 +2408,24 @@ simulate.gllvmTMB_multi <- function(
       }
     } else if (fid == 21L) {
       ## censored_poisson (Arc E, #1244; renumbered 2026-09-03 from 20 --
-      ## ordinal_logit, PR #1250, holds 20): draw the LATENT (uncensored)
-      ## Poisson count, then re-apply this row's OWN censoring design --
-      ## the censoring limit is a fixed property of the observation
-      ## mechanism (e.g. a detection ceiling), not part of the random draw
-      ## itself, so a resimulated dataset keeps the same row-level limits
-      ## and only redraws whether each replicate happens to exceed them
-      ## (dev/gapclose/arcE/alignment-censored-poisson.md).
+      ## ordinal_logit, PR #1250, holds 20): right-censored rows
+      ## (cens_limit == C >= 1) carry only Y >= C in the likelihood, so
+      ## resimulate from the same conditional tail as
+      ## residuals(type = "randomized_quantile")'s [F(C-1), 1) interval
+      ## (dev/gapclose/arcE/alignment-censored-poisson.md). Uncensored rows
+      ## (cens_limit == 0) are ordinary Poisson draws.
       C_i <- if (!is.null(cens_limit) && length(cens_limit) >= i) cens_limit[i] else 0
-      y_latent <- stats::rpois(1L, lambda = exp(eta_i))
-      y[i] <- if (is.finite(C_i) && C_i >= 1 && y_latent >= C_i) C_i else y_latent
+      mu_i <- exp(eta_i)
+      if (is.finite(C_i) && C_i >= 1) {
+        p_lo <- stats::ppois(C_i - 1L, lambda = mu_i)
+        u <- stats::runif(1L, min = p_lo, max = 1)
+        y[i] <- stats::qpois(u, lambda = mu_i)
+        if (y[i] < C_i) {
+          y[i] <- C_i
+        }
+      } else {
+        y[i] <- stats::rpois(1L, lambda = mu_i)
+      }
     } else {
       ## Unsupported family (currently only tweedie, fid 6, and anything
       ## unrecognised) — NA, not a Gaussian-on-link-scale substitute

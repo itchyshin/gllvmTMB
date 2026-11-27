@@ -217,6 +217,14 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
   criterion <- match.arg(criterion)
   dots <- list(...)
 
+  if (inherits(formula, "gllvmTMB_multi") || inherits(formula, "gllvmTMB_va")) {
+    cli::cli_abort(c(
+      "{.fn select_lv} is not an S3 method on a fitted model.",
+      "i" = "You passed a {.fn gllvmTMB} fit as {.arg formula}; {.fn select_lv} re-fits {.arg formula} at latent rank {.code d = 1, 2, ..., d_max}.",
+      ">" = "Call {.code select_lv(formula, data = ..., d_max = ...)} with the same {.arg formula} and {.arg data} you would pass to {.fn gllvmTMB()}."
+    ), class = "gllvmTMB_select_lv_bad_args")
+  }
+
   if (grepl("temporal_(indep|dep|latent)",
       paste(deparse(formula), collapse = " "))) {
     cli::cli_abort(c(

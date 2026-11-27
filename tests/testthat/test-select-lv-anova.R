@@ -446,6 +446,63 @@ test_that(".select_lv_set_d() replaces an existing d and adds a missing one", {
   expect_true(grepl("d = 2", deparse(out2)))
 })
 
+test_that(".select_lv_mark_loglik_saturation() flags tied logLik at higher d", {
+  tab <- data.frame(
+    d = 1:4,
+    logLik = c(-100, -80, -70, -70),
+    error = c(NA, NA, NA, NA)
+  )
+  out <- .select_lv_mark_loglik_saturation(tab)
+  expect_false(out$rank_saturated[1])
+  expect_false(out$rank_saturated[2])
+  expect_false(out$rank_saturated[3])
+  expect_true(out$rank_saturated[4])
+  expect_gt(out$logLik_gain[2], 0)
+  expect_gt(out$logLik_gain[3], 0)
+  expect_equal(out$logLik_gain[4], 0)
+})
+
+## Issue #1989: 5-trait latent(unique = TRUE) can plateau at d = 3 with higher
+## ranks adding parameters but no logLik gain (rank saturation, not a fit bug).
+test_that("select_lv() marks rank saturation when logLik ties at higher d (#1989)", {
+  skip_if_not_heavy()
+  set.seed(101)
+  Lambda <- matrix(
+    c(0.85, 0.55, 0.35, -0.35, 0.15,
+      0.05, 0.45, -0.25, 0.55, 0.25),
+    nrow = 5, ncol = 2
+  )
+  sim <- simulate_unit_trait(
+    n_units = 45, n_obs_per_unit = 2, n_traits = 5,
+    Lambda_B = Lambda, psi_B = rep(0.2, 5),
+    sigma2_eps = 0.15, seed = 101
+  )
+  expect_warning(
+    sel <- select_lv(
+      value ~ 0 + trait + latent(0 + trait | unit, unique = TRUE),
+      data = sim$data, trait = "trait", unit = "unit",
+      family = gaussian(), d_max = 4
+    ),
+    class = "gllvmTMB_select_lv_rank_saturated"
+  )
+  row3 <- sel$table[sel$table$d == 3L, , drop = FALSE]
+  row4 <- sel$table[sel$table$d == 4L, , drop = FALSE]
+  expect_true(row3$converged && row4$converged)
+  expect_lt(abs(row3$logLik - row4$logLik), 1e-8)
+  expect_false(row3$rank_saturated)
+  expect_true(row4$rank_saturated)
+  f3 <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 3, unique = TRUE),
+    data = sim$data, trait = "trait", unit = "unit", family = gaussian()
+  )
+  f4 <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 4, unique = TRUE),
+    data = sim$data, trait = "trait", unit = "unit", family = gaussian()
+  )
+  expect_lt(abs(as.numeric(stats::logLik(f3)) - as.numeric(stats::logLik(f4))), 1e-8)
+  expect_gt(attr(stats::logLik(f4), "df"), attr(stats::logLik(f3), "df"))
+})
+
 ## ---- chibar2_pvalue() / variance_lrt() unit checks (fast) -----------------
 
 test_that("chibar2_pvalue() matches the textbook q = 1 half-chi-square identity", {

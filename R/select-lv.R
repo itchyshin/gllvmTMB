@@ -171,8 +171,12 @@
 #' \describe{
 #'   \item{table}{A `data.frame` with one row per attempted `d`: `d`,
 #'     `npar`, `logLik`, `aic`, `bic`, `aicc`, `converged` (optimizer
-#'     convergence flag), `pd_hessian`, `seconds`, and `error` (the error
-#'     message when a fit failed, else `NA`).}
+#'     convergence flag), `pd_hessian`, `seconds`, `error` (the error
+#'     message when a fit failed, else `NA`), `logLik_gain` (increase in
+#'     `logLik` over the best smaller eligible `d`, `Inf` at `d = 1`), and
+#'     `rank_saturated` (`TRUE` when a higher `d` matches the best
+#'     smaller-rank `logLik` to numerical precision, so the extra axis adds
+#'     no empirical support).}
 #'   \item{selected_d}{The chosen rank under `criterion`.}
 #'   \item{criterion}{The criterion used for selection.}
 #'   \item{fits}{A named list (names = `d`) of the fitted [gllvmTMB()]
@@ -357,6 +361,20 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
 
   table <- do.call(rbind, rows)
   rownames(table) <- NULL
+  table <- .select_lv_mark_loglik_saturation(table)
+  sat_d <- table$d[!is.na(table$rank_saturated) & table$rank_saturated]
+  if (length(sat_d) > 0L) {
+    sat_note <- sprintf(
+      "d = %s: logLik matches a smaller rank (no gain from extra axes)",
+      paste(sat_d, collapse = ", ")
+    )
+    cli::cli_warn(c(
+      "Latent rank(s) {paste(sat_d, collapse = ', ')} report the same logLik as a smaller {.arg d}; the extra axis does not increase empirical support.",
+      "i" = sat_note,
+      "i" = "With {.arg unique = TRUE}, trait covariance has only p(p + 1)/2 moments; ranks above what the data can support often plateau rather than improve the objective.",
+      "i" = "Treat saturated rows as tied at the empirical maximum rank, not as better ordinations."
+    ), class = "gllvmTMB_select_lv_rank_saturated")
+  }
 
   ## Eligible = fit succeeded, optimizer converged, and the Hessian is not
   ## CONFIRMED non-PD. pd_hessian == NA (se = FALSE, so sdreport() never
@@ -409,6 +427,33 @@ select_lv <- function(formula, data, ..., d_max, criterion = c("bic", "aic", "ai
 ## known); treat NA as "not eligible" rather than propagating NA through `&`.
 .select_lv_isTRUE_vec <- function(x) !is.na(x) & x
 
+## For each converged row, compare logLik to the best logLik among strictly
+## smaller d values. Ties within sqrt(eps) scaling flag rank saturation (the
+## higher rank adds parameters but not likelihood support).
+.select_lv_mark_loglik_saturation <- function(table) {
+  table$logLik_gain <- NA_real_
+  table$rank_saturated <- NA
+  ok <- is.na(table$error) & is.finite(table$logLik)
+  if (!any(ok)) {
+    return(table)
+  }
+  for (i in which(ok)) {
+    di <- table$d[i]
+    prior <- ok & table$d < di
+    if (!any(prior)) {
+      table$logLik_gain[i] <- Inf
+      table$rank_saturated[i] <- FALSE
+      next
+    }
+    best_lower <- max(table$logLik[prior], na.rm = TRUE)
+    gain <- table$logLik[i] - best_lower
+    tol <- sqrt(.Machine$double.eps) * (1 + abs(best_lower))
+    table$logLik_gain[i] <- gain
+    table$rank_saturated[i] <- is.finite(gain) && gain <= tol
+  }
+  table
+}
+
 #' @rdname select_lv
 #' @param x A `"gllvmTMB_select_lv"` object.
 #' @param ... Currently unused.
@@ -430,10 +475,18 @@ print.gllvmTMB_select_lv <- function(x, ...) {
     AICc = round(tab$aicc, 3),
     conv = tab$converged,
     pdHess = tab$pd_hessian,
+    saturated = tab$rank_saturated,
     check.names = FALSE
   )
   names(show)[1] <- ""
   print(show, row.names = FALSE)
+  if (any(!is.na(tab$rank_saturated) & tab$rank_saturated)) {
+    sat_d <- tab$d[!is.na(tab$rank_saturated) & tab$rank_saturated]
+    cat(sprintf(
+      "\nRank-saturated (logLik tied to a smaller d): %s\n",
+      paste(sat_d, collapse = ", ")
+    ))
+  }
   if (any(!is.na(tab$error))) {
     cat("\nFailed fits:\n")
     for (i in which(!is.na(tab$error))) {

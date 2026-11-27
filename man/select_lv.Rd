@@ -42,8 +42,12 @@ An object of class \code{"gllvmTMB_select_lv"}, a list with:
 \describe{
 \item{table}{A \code{data.frame} with one row per attempted \code{d}: \code{d},
 \code{npar}, \code{logLik}, \code{aic}, \code{bic}, \code{aicc}, \code{converged} (optimizer
-convergence flag), \code{pd_hessian}, \code{seconds}, and \code{error} (the error
-message when a fit failed, else \code{NA}).}
+convergence flag), \code{pd_hessian}, \code{seconds}, \code{error} (the error
+message when a fit failed, else \code{NA}), \code{logLik_gain} (increase in
+\code{logLik} over the best smaller eligible \code{d}, \code{Inf} at \code{d = 1}), and
+\code{rank_saturated} (\code{TRUE} when a higher \code{d} matches the best
+smaller-rank \code{logLik} to numerical precision, so the extra axis adds
+no empirical support).}
 \item{selected_d}{The chosen rank under \code{criterion}.}
 \item{criterion}{The criterion used for selection.}
 \item{fits}{A named list (names = \code{d}) of the fitted \code{\link[=gllvmTMB]{gllvmTMB()}}

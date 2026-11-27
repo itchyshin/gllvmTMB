@@ -1,0 +1,208 @@
+{
+  "claim_tag": "cursor-cloud-1127up",
+  "sha": "1e3662653e4a45907b18255afbe621cd18415720",
+  "sessionInfo": ["R version 4.3.3 (2024-02-29)", "Platform: x86_64-pc-linux-gnu (64-bit)", "Running under: Ubuntu 24.04.5 LTS", "", "Matrix products: default", "BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.12.0 ", "LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.12.0", "", "locale:", " [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              ", " [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    ", " [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   ", " [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 ", " [9] LC_ADDRESS=C               LC_TELEPHONE=C            ", "[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       ", "", "time zone: Etc/UTC", "tzcode source: system (glibc)", "", "attached base packages:", "[1] stats     graphics  grDevices utils     datasets  methods   base     ", "", "other attached packages:", "[1] Matrix_1.6-5   gllvmTMB_0.8.0", "", "loaded via a namespace (and not attached):", "[1] MASS_7.3-60.0.1  compiler_4.3.3   assertthat_0.2.1 generics_0.1.4  ", "[5] cli_3.6.6        TMB_1.9.25       grid_4.3.3       rlang_1.3.0     ", "[9] lattice_0.22-5  "],
+  "n_findings": 31,
+  "findings": [
+    {
+      "id": "S01",
+      "title": "gllvmTMB latent gaussian fit error",
+      "detail": "use of NULL environment is defunct",
+      "repro": "harness"
+    },
+    {
+      "id": "S02",
+      "title": "gllvmTMB latent gaussian fit error",
+      "detail": "use of NULL environment is defunct",
+      "repro": "harness"
+    },
+    {
+      "id": "S03",
+      "title": "gllvmTMB latent gaussian fit error",
+      "detail": "use of NULL environment is defunct",
+      "repro": "harness"
+    },
+    {
+      "id": "S04",
+      "title": "gllvmTMB latent gaussian fit error",
+      "detail": "use of NULL environment is defunct",
+      "repro": "harness"
+    },
+    {
+      "id": "S05",
+      "title": "gllvmTMB latent gaussian fit error",
+      "detail": "use of NULL environment is defunct",
+      "repro": "harness"
+    },
+    {
+      "id": "S06",
+      "title": "gllvmTMB latent gaussian fit error",
+      "detail": "use of NULL environment is defunct",
+      "repro": "harness"
+    },
+    {
+      "id": "S07",
+      "title": "simulate() error on converged fit",
+      "detail": "argument 2 matches multiple formal arguments",
+      "repro": "harness"
+    },
+    {
+      "id": "S07",
+      "title": "residuals(pearson) error",
+      "detail": "'arg' should be one of “randomized_quantile”, “simulation_rank”",
+      "repro": "harness"
+    },
+    {
+      "id": "S08",
+      "title": "simulate() error on converged fit",
+      "detail": "argument 2 matches multiple formal arguments",
+      "repro": "harness"
+    },
+    {
+      "id": "S08",
+      "title": "residuals(pearson) error",
+      "detail": "'arg' should be one of “randomized_quantile”, “simulation_rank”",
+      "repro": "harness"
+    },
+    {
+      "id": "S09",
+      "title": "extract_Sigma total disagrees with Lambda Lambda' + Psi (max rel err 0.860)",
+      "detail": "Scenario S09: converged=TRUE; max_rel=0.859984726133153",
+      "repro": "see harness log"
+    },
+    {
+      "id": "S09",
+      "title": "simulate() error on converged fit",
+      "detail": "argument 2 matches multiple formal arguments",
+      "repro": "harness"
+    },
+    {
+      "id": "S09",
+      "title": "residuals(pearson) error",
+      "detail": "'arg' should be one of “randomized_quantile”, “simulation_rank”",
+      "repro": "harness"
+    },
+    {
+      "id": "S10",
+      "title": "extract_Sigma total disagrees with Lambda Lambda' + Psi (max rel err 0.788)",
+      "detail": "Scenario S10: converged=TRUE; max_rel=0.78847636812758",
+      "repro": "see harness log"
+    },
+    {
+      "id": "S10",
+      "title": "simulate() error on converged fit",
+      "detail": "argument 2 matches multiple formal arguments",
+      "repro": "harness"
+    },
+    {
+      "id": "S10",
+      "title": "residuals(pearson) error",
+      "detail": "'arg' should be one of “randomized_quantile”, “simulation_rank”",
+      "repro": "harness"
+    },
+    {
+      "id": "S10",
+      "title": "confint() contains non-finite entries",
+      "detail": "",
+      "repro": "harness"
+    },
+    {
+      "id": "S11",
+      "title": "extract_Sigma total disagrees with Lambda Lambda' + Psi (max rel err 0.983)",
+      "detail": "Scenario S11: converged=TRUE; max_rel=0.982666200041918",
+      "repro": "see harness log"
+    },
+    {
+      "id": "S11",
+      "title": "simulate() error on converged fit",
+      "detail": "argument 2 matches multiple formal arguments",
+      "repro": "harness"
+    },
+    {
+      "id": "S11",
+      "title": "residuals(pearson) error",
+      "detail": "'arg' should be one of “randomized_quantile”, “simulation_rank”",
+      "repro": "harness"
+    },
+    {
+      "id": "S12",
+      "title": "extract_Sigma total disagrees with Lambda Lambda' + Psi (max rel err 0.977)",
+      "detail": "Scenario S12: converged=TRUE; max_rel=0.976858946739876",
+      "repro": "see harness log"
+    },
+    {
+      "id": "S12",
+      "title": "simulate() error on converged fit",
+      "detail": "argument 2 matches multiple formal arguments",
+      "repro": "harness"
+    },
+    {
+      "id": "S12",
+      "title": "residuals(pearson) error",
+      "detail": "'arg' should be one of “randomized_quantile”, “simulation_rank”",
+      "repro": "harness"
+    },
+    {
+      "id": "S14",
+      "title": "extract_Sigma total disagrees with Lambda Lambda' + Psi (max rel err 0.998)",
+      "detail": "Scenario S14: converged=TRUE; max_rel=0.998217991317973",
+      "repro": "see harness log"
+    },
+    {
+      "id": "S14",
+      "title": "simulate() error on converged fit",
+      "detail": "argument 2 matches multiple formal arguments",
+      "repro": "harness"
+    },
+    {
+      "id": "S14",
+      "title": "residuals(pearson) error",
+      "detail": "'arg' should be one of “randomized_quantile”, “simulation_rank”",
+      "repro": "harness"
+    },
+    {
+      "id": "S15",
+      "title": "extract_Sigma total disagrees with Lambda Lambda' + Psi (max rel err 0.607)",
+      "detail": "Scenario S15: converged=TRUE; max_rel=0.606889678102195",
+      "repro": "see harness log"
+    },
+    {
+      "id": "S15",
+      "title": "simulate() error on converged fit",
+      "detail": "argument 2 matches multiple formal arguments",
+      "repro": "harness"
+    },
+    {
+      "id": "S15",
+      "title": "residuals(pearson) error",
+      "detail": "'arg' should be one of “randomized_quantile”, “simulation_rank”",
+      "repro": "harness"
+    },
+    {
+      "id": "S24",
+      "title": "mixed gaussian nbinom2 error",
+      "detail": "`nbinom2()` rows: `y` must be a non-negative integer.\nℹ Negative or non-integer values are outside the count support of `nbinom2()`.\n→ Round or recode `y` to non-negative integers before fitting.",
+      "repro": ""
+    },
+    {
+      "id": "S26",
+      "title": "tweedie+binomial mixed error",
+      "detail": "Binomial rows: `y` (successes) must be a non-negative integer satisfying\n0 <= y <= n_trials.\nℹ A proportion response (for example `y = successes / n_trials`) is not\n  accepted, even with `weights`.\n→ Pass the success count as `y`, or use `cbind(succ, fail)`. Both columns must\n  be non-negative integers.",
+      "repro": ""
+    }
+  ],
+  "passed": ["S07 indep gaussian", "S08 dep (advisory absent)", "S09 poisson latent d=1", "S10 binomial latent d=1", "S11 nbinom2 latent", "S12 tweedie latent", "S13 ordinal latent", "S14 mixed gaussian+binomial latent", "S15 site_trait latent", "S20 indep Sigma parts"],
+  "suspicious": {
+    "S07": "Could not extract Sigma/loadings/unique for identity check",
+    "S08": "predict(link) returned class matrix/array",
+    "S09": "predict(link) returned class matrix/array",
+    "S10": "predict(link) returned class matrix/array",
+    "S11": "predict(link) returned class matrix/array",
+    "S12": "predict(link) returned class matrix/array",
+    "S13": "predict(link) returned class matrix/array",
+    "S14": "predict(link) returned class matrix/array",
+    "S15": "predict(link) returned class matrix/array",
+    "S19": "simulate newdata: Cannot build the fixed-effect design for `newdata`.\n✖ object 'trait' not found\nℹ Use the training factor levels and the same transforms as the fitted formula.\nCaused by error:\n! object 'trait' not found"
+  },
+  "n_passed": 10
+}

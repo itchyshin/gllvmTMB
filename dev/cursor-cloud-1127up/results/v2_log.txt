@@ -1,0 +1,15 @@
+PASS: G01 latent d=1 unique=TRUE
+PASS: G02 latent d=1 unique=FALSE
+PASS: G03 latent d=2 unique=TRUE
+PASS: G04 latent d=2 unique=FALSE
+PASS: G05 latent d=3 unique=TRUE
+PASS: G06 latent d=3 unique=FALSE
+PASS: I07 indep simulate
+PASS: I07 rq residuals
+PASS: D08 dep no latent-only advisory
+PASS: P09 poisson
+PASS: B10 binomial predict response in [0,1]
+
+*** FINDING N11: nbinom2 fit issue
+PASS: T12 tweedie
+PASS: O13 ordinal

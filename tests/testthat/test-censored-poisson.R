@@ -286,11 +286,38 @@ test_that("simulate() draws the latent Poisson and re-applies each row's own cen
   sim <- simulate(fit, nsim = 1, seed = 11)
   sim_vec <- as.numeric(sim[, 1L])
   expect_length(sim_vec, n_site)
-  ## Rows the ORIGINAL data marked censored (cens_limit > 0) can never draw
-  ## a simulated value above their own limit -- that is the whole point of
-  ## re-applying the row's censoring design.
   cl <- fit$tmb_data$cens_limit
-  expect_true(all(sim_vec[cl > 0] <= cl[cl > 0]))
+  expect_true(all(sim_vec[cl > 0] >= cl[cl > 0]))
+})
+
+test_that("simulate() on censored rows respects the right-censoring limit (issue #1987)", {
+  skip_on_cran()
+  set.seed(99)
+  n <- 16L
+  y <- stats::rpois(2L * n, 4)
+  censored <- as.integer(y >= 5L)
+  y[censored == 1L] <- 5L
+  df <- data.frame(
+    unit = factor(rep(seq_len(n), each = 2L)),
+    trait = factor(rep(c("t1", "t2"), n)),
+    y = y,
+    censored = censored
+  )
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    cbind(y, censored) ~ 0 + trait + latent(1 | unit, d = 1, unique = FALSE),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = censored_poisson(),
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+  S <- simulate(fit, nsim = 50, condition_on_RE = TRUE, seed = 1L)
+  idx <- which(df$censored == 1L)
+  expect_true(all(vapply(
+    idx,
+    function(i) all(S[i, ] >= df$y[i]),
+    logical(1L)
+  )))
 })
 
 test_that("residuals(type = \"randomized_quantile\") runs without error and covers censored rows", {

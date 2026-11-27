@@ -66,6 +66,9 @@ parse_multi_formula <- function(formula, trait_col = "trait") {
   ## (`tree = ...`, `coords = ...`, `vcv = ...`, etc.) can be resolved
   ## against the user's calling frame rather than the parser's.
   formula_env <- environment(formula)
+  if (is.null(formula_env)) {
+    formula_env <- parent.frame()
+  }
 
   covstructs <- list()
   fixed_terms <- list()
@@ -220,18 +223,14 @@ parse_multi_formula <- function(formula, trait_col = "trait") {
       }
     }
   }
+  ## Build the fixed formula without a deparse round-trip so call-shaped terms
+  ## (e.g. `I(splines::ns(...))`) keep a non-NULL environment for model.frame()
+  ## (#1967, #688).
   fixed <- if (is.null(lhs)) {
-    stats::reformulate(deparse(fixed_rhs))
+    stats::as.formula(call("~", fixed_rhs), env = formula_env)
   } else {
-    fmla <- call("~", lhs, fixed_rhs)
-    ## `deparse()` can wrap a long programmatic formula.  `as.formula()`
-    ## expects one string, rather than the wrapped character vector.
-    eval(call("as.formula", paste(deparse(fmla), collapse = " ")))
+    stats::as.formula(call("~", lhs, fixed_rhs), env = formula_env)
   }
-  ## reformulate()/as.formula() attach the parser's environment; restore the
-  ## user's formula environment so downstream fixed-effect evaluation resolves
-  ## variables in the caller's frame rather than the parser's (#688).
-  environment(fixed) <- formula_env
   ## The raw RHS (mi() wrapper intact) is needed by the missing-predictor layer
   ## to verify that mi() appears only as a simple additive term.
   mi_rhs <- rhs

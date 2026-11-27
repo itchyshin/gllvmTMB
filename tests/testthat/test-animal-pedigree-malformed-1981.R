@@ -6,20 +6,15 @@ test_that("animal_indep(pedigree=) with id+dam only errors with animal pedigree 
     trait = rep(c("t1", "t2"), each = 8),
     value = rnorm(16)
   )
-  expect_error(
+  err <- expect_error(
     gllvmTMB(
       value ~ 0 + trait + animal_indep(0 + trait | animal, pedigree = ped),
       data = dat,
       unit = "animal"
-    ),
-    "pedigree"
+    )
   )
-  expect_error(
-    gllvmTMB(
-      value ~ 0 + trait + animal_indep(0 + trait | animal, pedigree = ped),
-      data = dat,
-      unit = "animal"
-    ),
-  "sire"
-  )
+  msg <- conditionMessage(err)
+  expect_match(msg, "pedigree")
+  expect_match(msg, "sire")
+  expect_no_match(msg, "phylo_vcv")
 })

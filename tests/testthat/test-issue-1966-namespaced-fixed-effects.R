@@ -6,15 +6,9 @@ test_that("parse_multi_formula handles namespace-qualified fixed-effect calls (#
     base_log1p = value ~ 0 + trait + base::log1p(x)
   )
   for (nm in names(cases)) {
-    parsed <- expect_no_error(
-      gllvmTMB:::parse_multi_formula(cases[[nm]]),
-      info = nm
-    )
-    expect_s3_class(parsed$fixed, "formula", info = nm)
-    expect_true(
-      any(grepl("::", deparse(parsed$fixed[[length(parsed$fixed)]]))),
-      info = nm
-    )
+    parsed <- gllvmTMB:::parse_multi_formula(cases[[nm]])
+    expect_s3_class(parsed$fixed, "formula")
+    expect_true(any(grepl("::", deparse(parsed$fixed[[length(parsed$fixed)]]))))
   }
 })
 

@@ -3499,6 +3499,14 @@ predict.gllvmTMB_multi <- function(
   se.fit = FALSE,
   ...
 ) {
+  if (is.character(newdata) && length(newdata) == 1L &&
+      newdata %in% c("link", "response")) {
+    cli::cli_abort(c(
+      "The second positional argument was interpreted as {.arg newdata}, not {.arg type}.",
+      "i" = "Did you mean {.code predict(fit, type = \"{newdata}\")}?",
+      ">" = "Pass {.arg type} by name: {.code predict(fit, type = \"{newdata}\")}."
+    ), class = "gllvmTMB_predict_type_positional")
+  }
   type <- match.arg(type)
   .gllvmTMB_predict_warn_unused(list(...))
   if (isTRUE(object$temporal$active) && !is.null(newdata)) {

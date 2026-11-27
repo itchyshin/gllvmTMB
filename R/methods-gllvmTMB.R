@@ -1826,9 +1826,9 @@ tidy.gllvmTMB_multi <- function(
 #'   unrecognised family) are returned as `NA_real_`, together with a
 #'   warning naming the affected `family_id` values — never a
 #'   Gaussian-on-link-scale substitute, and never silent. The `newdata`
-#'   path (predictions on unseen data) still falls back to a
-#'   Gaussian-on-link-scale draw for every family, with its own warning;
-#'   family-aware `newdata` simulation is not yet implemented.
+#'   path uses the same family-aware draw when each row's `(family, link)`
+#'   can be resolved; otherwise it still falls back to a Gaussian-on-link-scale
+#'   draw with a one-shot warning.
 #' @importFrom stats simulate
 #' @export
 simulate.gllvmTMB_multi <- function(
@@ -1907,26 +1907,39 @@ simulate.gllvmTMB_multi <- function(
       eta <- .aghq_conditional_training_eta(object)
       out <- replicate(nsim, .draw_y_per_family(object, eta))
     } else {
-      ## newdata supplied — eta length doesn't necessarily match the
-      ## training data's family_id_vec. Fall back to Gaussian-on-link-
-      ## scale draws and one-shot warn. Family-aware newdata simulation
-      ## is M2/M3 work (needs a per-row family extractor from newdata).
       pp <- predict(object, newdata = newdata)
       eta <- pp$est
-      sigma <- .gllvmTMB_sigma_eps(object)
-      cache_key <- "gllvmTMB.warned_simulate_newdata_gaussian_fallback"
-      if (is.null(getOption(cache_key))) {
-        cli::cli_warn(
-          c(
-            "{.fn simulate} with {.arg newdata} falls back to Gaussian-on-link-scale draws.",
-            "i" = "Family-aware {.arg newdata} simulation needs per-row family lookup from {.arg newdata}; that is not yet implemented.",
-            ">" = "For mixed-family bootstrap-style refits, call {.fn simulate} without {.arg newdata}."
-          ),
-          class = "gllvmTMB_simulate_newdata_gaussian_fallback"
+      row_meta <- .gllvmTMB_newdata_simulate_row_meta(
+        object, newdata, length(eta)
+      )
+      if (!is.null(row_meta)) {
+        out <- replicate(
+          nsim,
+          .draw_y_per_family(
+            object,
+            eta,
+            family_id_vec = row_meta$family_id_vec,
+            link_id_vec = row_meta$link_id_vec,
+            trait_id = row_meta$trait_id,
+            n_trials = row_meta$n_trials
+          )
         )
-        options(stats::setNames(list(TRUE), cache_key))
+      } else {
+        sigma <- .gllvmTMB_sigma_eps(object)
+        cache_key <- "gllvmTMB.warned_simulate_newdata_gaussian_fallback"
+        if (is.null(getOption(cache_key))) {
+          cli::cli_warn(
+            c(
+              "{.fn simulate} with {.arg newdata} falls back to Gaussian-on-link-scale draws.",
+              "i" = "Could not resolve a per-row family for every {.arg newdata} row from the fit (trait and family-selector columns may be required on mixed-family fits).",
+              ">" = "For mixed-family bootstrap-style refits, call {.fn simulate} without {.arg newdata}."
+            ),
+            class = "gllvmTMB_simulate_newdata_gaussian_fallback"
+          )
+          options(stats::setNames(list(TRUE), cache_key))
+        }
+        out <- replicate(nsim, eta + stats::rnorm(length(eta), sd = sigma))
       }
-      out <- replicate(nsim, eta + stats::rnorm(length(eta), sd = sigma))
     }
     if (is.null(dim(out))) {
       out <- as.matrix(out)
@@ -2075,12 +2088,27 @@ simulate.gllvmTMB_multi <- function(
 #'
 #' @keywords internal
 #' @noRd
-.draw_y_per_family <- function(fit, eta) {
-  fids <- fit$tmb_data$family_id_vec
-  lids <- fit$tmb_data$link_id_vec
-  tids <- fit$tmb_data$trait_id # 0-indexed in TMB
+.draw_y_per_family <- function(
+  fit,
+  eta,
+  family_id_vec = NULL,
+  link_id_vec = NULL,
+  trait_id = NULL,
+  n_trials = NULL
+) {
+  fids <- family_id_vec %||% fit$tmb_data$family_id_vec
+  lids <- link_id_vec %||% fit$tmb_data$link_id_vec
+  tids <- trait_id %||% fit$tmb_data$trait_id # 0-indexed in TMB
   n <- length(eta)
-  n_trials <- fit$tmb_data$n_trials # checked for length before draw (#1865)
+  if (length(fids) != n || length(lids) != n || length(tids) != n) {
+    cli::cli_abort(c(
+      "Per-row family vectors do not match the length of {.arg eta}.",
+      "i" = "Expected length {.val {n}} for family, link, and trait indices."
+    ), class = "gllvmTMB_simulate_row_meta_length")
+  }
+  if (is.null(n_trials)) {
+    n_trials <- fit$tmb_data$n_trials # checked for length before draw (#1865)
+  }
   if (!is.null(n_trials) && length(n_trials) != n) {
     cli::cli_abort(c(
       "The stored per-row trial-count vector length does not match the model rows.",
@@ -2982,6 +3010,79 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   idx <- match(as.character(nd[[fam_var]]), lvls)
   if (anyNA(idx)) return(NULL)
   list(fid = fid_by[idx], lid = lid_by[idx])
+}
+
+#' Per-row family metadata for `simulate(newdata = )`
+#'
+#' Mirrors the `(family_id, link_id)` resolution on the `predict()` `newdata`
+#' path: family-selector column when present, else a single-family constant,
+#' else the per-trait modal ids. Returns `NULL` when any row cannot be resolved
+#' (mixed-family fits without the selector column and without traits).
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_newdata_simulate_row_meta <- function(object, nd, n) {
+  if (n < 1L) return(NULL)
+  fid_train <- object$tmb_data$family_id_vec
+  lid_train <- object$tmb_data$link_id_vec
+  if (is.null(fid_train) || is.null(lid_train)) return(NULL)
+
+  per_row <- .gllvmTMB_newdata_family_ids(object, nd)
+  if (!is.null(per_row)) {
+    fids <- per_row$fid
+    lids <- per_row$lid
+  } else if (length(unique(fid_train)) == 1L) {
+    fids <- rep(as.integer(fid_train[1L]), n)
+    lids <- rep(as.integer(lid_train[1L]), n)
+  } else if (!is.null(object$trait_col) && object$trait_col %in% names(nd)) {
+    n_tr <- nlevels(object$data[[object$trait_col]])
+    fid_by_trait <- integer(n_tr)
+    lid_by_trait <- integer(n_tr)
+    tids_train <- object$tmb_data$trait_id
+    for (t in seq_len(n_tr)) {
+      rows_t <- which((tids_train + 1L) == t)
+      if (length(rows_t) == 0L) {
+        fid_by_trait[t] <- fid_train[1L]
+        lid_by_trait[t] <- lid_train[1L]
+      } else {
+        fid_by_trait[t] <- .modal_integer_id(fid_train[rows_t], fid_train[1L])
+        lid_by_trait[t] <- .modal_integer_id(lid_train[rows_t], lid_train[1L])
+      }
+    }
+    tr_out <- as.integer(nd[[object$trait_col]])
+    tr_out[is.na(tr_out)] <- 1L
+    if (anyNA(tr_out) || any(tr_out < 1L | tr_out > n_tr)) return(NULL)
+    fids <- fid_by_trait[tr_out]
+    lids <- lid_by_trait[tr_out]
+  } else {
+    return(NULL)
+  }
+
+  if (!is.null(object$trait_col) && object$trait_col %in% names(nd)) {
+    trait_id <- as.integer(nd[[object$trait_col]]) - 1L
+    trait_id[is.na(trait_id)] <- 0L
+  } else if (object$n_traits == 1L) {
+    trait_id <- rep(0L, n)
+  } else {
+    return(NULL)
+  }
+
+  n_trials <- NULL
+  train_trials <- object$tmb_data$n_trials
+  if ("weights" %in% names(nd)) {
+    n_trials <- as.numeric(nd[["weights"]])
+  } else if (!is.null(train_trials) &&
+             length(train_trials) == length(fid_train) &&
+             length(unique(train_trials)) == 1L) {
+    n_trials <- rep(as.numeric(train_trials[1L]), n)
+  }
+
+  list(
+    family_id_vec = as.integer(fids),
+    link_id_vec = as.integer(lids),
+    trait_id = as.integer(trait_id),
+    n_trials = n_trials
+  )
 }
 
 #' SPDE mesh projector at `newdata` rows

@@ -1295,39 +1295,17 @@ test_that("a unit-level mi(x) with no mi_group() is still the Phase 2a path", {
   )
 }
 
-test_that("interior unused factor level in the unit level re-factors (BUG-1)", {
+test_that("interior unused factor level in the unit level is refused (BUG-1, #1952)", {
   skip_if_not_heavy()
   g <- .make_mi_interior_gap()
   dat <- g$data
   ## Sanity: the latent level (site) carries an interior gap before the fit.
   expect_true(g$gap_site %in% levels(dat$site))
   expect_false(g$gap_site %in% as.integer(dat$site))
-  n_present <- length(unique(as.integer(dat$site)))
 
-  ## BEFORE the fix this OOBs / crashes inside the TMB engine; AFTER it fits.
-  fit <- .fit_mi_uni(dat, se = TRUE)
-
-  ## (1) Correct unit count: the latent level is re-factored to PRESENT levels
-  ## only (the dropped middle level is gone), NOT max(code) + 1.
-  par <- fit$tmb_obj$env$parList(fit$opt$par)
-  expect_identical(stats::nobs(fit), nrow(dat))
-  ## One x_mis per missing UNIT (the 4 missing sites survive the gap drop).
-  expect_length(par$x_mis, length(g$missing_site_orig))
-  ## (2) Finite estimates everywhere (no OOB-poisoned values).
-  expect_true(all(is.finite(par$b_fix)))
-  expect_true(all(is.finite(par$beta_mi)))
-  expect_true(is.finite(par$log_sigma_mi[[1]]))
-  expect_lt(max(abs(fit$tmb_obj$gr(fit$opt$par))), 1e-2)
-  ## (3) The registry model_row maps the missing units to their RE-FACTORED
-  ## positions (contiguous 0..K-1 after dropping the interior gap), and the
-  ## imputed() frame agrees.
-  reg <- fit$missing_data$predictors$x
-  expect_identical(reg$model_row, g$missing_site_refactored)
-  expect_identical(reg$counts$missing, length(g$missing_site_orig))
-  out <- imputed(fit)
-  expect_identical(out$model_row, g$missing_site_refactored)
-  expect_true(all(is.finite(out$estimate)))
-  expect_true(all(is.finite(out$std_error)))
+  err <- expect_error(.fit_mi_uni(dat, se = TRUE), class = "gllvmTMB_empty_unit_level")
+  expect_match(conditionMessage(err), as.character(g$gap_site), fixed = TRUE)
+  expect_match(conditionMessage(err), "droplevels()", fixed = TRUE)
 })
 
 # ---- GAP-1: reject the unsafe (1|group) + mi_group() composition -----------

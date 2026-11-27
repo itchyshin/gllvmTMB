@@ -623,6 +623,12 @@ extract_ordination <- function(
       ))
     }
     if (!fit$use$rr_B) {
+      spde_ord <- .extract_spatial_latent_ordination(
+        fit, component = component, trait_names = trait_names
+      )
+      if (!is.null(spde_ord)) {
+        return(spde_ord)
+      }
       return(NULL)
     }
     z_B <- .ordination_score_matrix(par, "z_B", fit$d_B, fit$n_sites,
@@ -695,6 +701,68 @@ extract_ordination <- function(
     "i" = "Quadrature integrates the unit scores out, so the fit has no joint covariance for them. The point scores from {.fn getLV} and {.fn extract_ordination} are conditional modes.",
     ">" = "Refit with {.code gllvmTMBcontrol(aghq = FALSE)} (or {.code laplace_auto_refit = FALSE}) for score uncertainty."
   ), class = class)
+}
+
+## Spatial_latent() site scores via the same A_proj %*% omega_spde_lv projection
+## used on the predict(newdata) SPDE path (R/methods-gllvmTMB.R).
+.extract_spatial_latent_ordination <- function(fit, component, trait_names) {
+  lv_k <- as.integer(fit$tmb_data$spde_lv_k %||% 0L)
+  if (lv_k < 1L || !isTRUE(fit$use$spatial_latent)) {
+    return(NULL)
+  }
+  if (identical(fit$source_strength$source, "spatial")) {
+    return(NULL)
+  }
+  Lambda <- as.matrix(fit$report$Lambda_spde)
+  if (is.null(Lambda) || ncol(Lambda) != lv_k) {
+    return(NULL)
+  }
+  rownames(Lambda) <- trait_names
+  colnames(Lambda) <- paste0("LV", seq_len(ncol(Lambda)))
+
+  par <- fit$tmb_obj$env$last.par.best
+  om_lv <- par[names(par) == "omega_spde_lv"]
+  A <- fit$tmb_data$A_proj
+  if (is.null(A)) {
+    return(NULL)
+  }
+  n_mesh <- ncol(A)
+  if (length(om_lv) != n_mesh * lv_k) {
+    return(NULL)
+  }
+  A_lv <- as.matrix(
+    A %*% matrix(as.numeric(om_lv), nrow = n_mesh, ncol = lv_k)
+  )
+  site_id <- fit$tmb_data$site_id + 1L
+  n_sites <- as.integer(fit$tmb_data$n_sites)
+  site_names <- levels(fit$data[[fit$unit_col]])
+  innovation <- matrix(NA_real_, nrow = n_sites, ncol = lv_k)
+  for (s in seq_len(n_sites)) {
+    rows <- which(site_id == s)
+    if (!length(rows)) {
+      next
+    }
+    innovation[s, ] <- A_lv[rows[1L], , drop = FALSE]
+  }
+  rownames(innovation) <- site_names
+  colnames(innovation) <- paste0("LV", seq_len(lv_k))
+  mean_scores <- matrix(
+    0,
+    nrow = n_sites,
+    ncol = lv_k,
+    dimnames = dimnames(innovation)
+  )
+  scores <- switch(
+    component,
+    total = innovation,
+    innovation = innovation,
+    mean = mean_scores
+  )
+  list(
+    scores = scores,
+    loadings = Lambda,
+    row_id = site_names
+  )
 }
 
 ## `fallback` is the AGHQ route's stored conditional modes (d x n): that tape

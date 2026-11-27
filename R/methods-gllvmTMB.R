@@ -4066,13 +4066,19 @@ predict.gllvmTMB_multi <- function(
         } else {
           NULL
         }
+        eta_link <- out$est
         out$est <- .apply_linkinv_per_row(
-          out$est,
+          eta_link,
           fid_vec,
           lid_vec,
           sigma_eps = object$report$sigma_eps,
           zi = zi_row
         )
+        if (any(fid_vec %in% c(14L, 20L))) {
+          ecat <- .gllvmTMB_ordinal_expected_category_vec(object, eta_link)
+          ord <- fid_vec %in% c(14L, 20L)
+          out$est[ord] <- ecat[ord]
+        }
       } else if (!is.null(object$family$linkinv)) {
         out$est <- object$family$linkinv(out$est)
       }
@@ -5498,6 +5504,41 @@ predict_missing <- function(
 ## omits such traits from its per-cutpoint data frame entirely. The CDF
 ## (pnorm for fid 14, plogis for fid 20) is chosen per-row from its own
 ## family; non-ordinal rows in `out` are untouched.
+.gllvmTMB_ordinal_expected_category_vec <- function(object, eta) {
+  fid_vec <- object$tmb_data$family_id_vec
+  tids <- object$tmb_data$trait_id
+  if (is.null(fid_vec) || is.null(tids) ||
+      length(fid_vec) != length(eta) || length(tids) != length(eta)) {
+    return(eta)
+  }
+  n_cuts_pt <- as.integer(object$tmb_data$n_ordinal_cuts_per_trait)
+  off_pt <- as.integer(object$tmb_data$ordinal_offset_per_trait)
+  taus <- as.numeric(object$report$ordinal_cutpoints %||% numeric(0))
+  out <- eta
+  ord_idx <- which(fid_vec %in% c(14L, 20L))
+  if (!length(ord_idx)) {
+    return(out)
+  }
+  for (i in ord_idx) {
+    t <- as.integer(tids[i]) + 1L
+    if (is.na(t) || t > length(n_cuts_pt)) {
+      next
+    }
+    kt_minus_2 <- n_cuts_pt[t]
+    tau_free <- if (kt_minus_2 > 0L) {
+      base_off <- off_pt[t]
+      taus[(base_off + 1L):(base_off + kt_minus_2)]
+    } else {
+      numeric(0)
+    }
+    bnds <- c(-Inf, 0, tau_free, Inf)
+    cdf_fun <- if (fid_vec[i] == 20L) stats::plogis else stats::pnorm
+    probs <- diff(cdf_fun(bnds - eta[i]))
+    out[i] <- sum(seq_along(probs) * probs)
+  }
+  out
+}
+
 .predict_missing_ordinal_response <- function(object, out, fid_vec, trait_lbl) {
   ord_idx <- which(fid_vec[out$model_row] %in% c(14L, 20L))
   if (length(ord_idx) == 0L || is.null(trait_lbl) || !trait_lbl %in% names(out)) {

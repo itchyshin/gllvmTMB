@@ -2877,6 +2877,32 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
 
 ## ---- predict(newdata=) support helpers (#1132) ------------------------------
 
+#' Random-effect matrix for `predict(newdata=)`
+#'
+#' TMB reports only *free* random effects in `last.par.best`. When every trait's
+#' `diag_B` / `diag_W` row is mapped off (single-trial binomial under the Psi
+#' gate, for example), `s_B` or `s_W` can be absent from that vector, and
+#' `matrix(numeric(0), ...)` becomes an all-`NA` grid — the #1982 defect.
+#' `parList()` still carries the full internal array with pinned rows at zero,
+#' matching what enters `report$eta`.
+#'
+#' @keywords internal
+#' @noRd
+.gllvmTMB_predict_random_effect_matrix <- function(object, par, name, n_row, n_col) {
+  len <- n_row * n_col
+  par_slice <- par[names(par) == name]
+  if (length(par_slice) == len) {
+    return(matrix(as.numeric(par_slice), nrow = n_row, ncol = n_col))
+  }
+  env <- object$tmb_obj$env
+  pl <- env$parList(env$last.par.best)
+  mat <- pl[[name, exact = TRUE]]
+  if (!is.null(mat) && is.matrix(mat) && identical(dim(mat), c(n_row, n_col))) {
+    return(as.matrix(mat))
+  }
+  matrix(0, nrow = n_row, ncol = n_col)
+}
+
 #' Warn about arguments that `predict()` received in `...` and ignored
 #'
 #' `predict.gllvmTMB_multi()` uses no argument from `...`, so anything there is
@@ -3764,8 +3790,9 @@ predict.gllvmTMB_multi <- function(
         s_B <- if (isTRUE(object$integrated_gaussian_diag_B)) {
           object$report$s_B_conditional_mean
         } else {
-          matrix(par[names(par) == "s_B"],
-                 nrow = object$n_traits, ncol = object$n_sites)
+          .gllvmTMB_predict_random_effect_matrix(
+            object, par, "s_B", object$n_traits, object$n_sites
+          )
         }
         if (!identical(dim(s_B), c(object$n_traits, object$n_sites))) {
           cli::cli_abort("The fitted unit-level diagonal effects have incompatible dimensions.")
@@ -3887,10 +3914,8 @@ predict.gllvmTMB_multi <- function(
         }
         ## diag_W: src/gllvmTMB.cpp:2509 -- eta(o) += s_W(t, ss).
         if (isTRUE(object$use$diag_W) && any(ok_ss)) {
-          s_W <- matrix(
-            par[names(par) == "s_W"],
-            nrow = object$n_traits,
-            ncol = object$n_site_species
+          s_W <- .gllvmTMB_predict_random_effect_matrix(
+            object, par, "s_W", object$n_traits, object$n_site_species
           )
           eta[ok_ss] <- eta[ok_ss] +
             s_W[cbind(tr_id[ok_ss] + 1L, ss_id[ok_ss] + 1L)]

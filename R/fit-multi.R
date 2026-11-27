@@ -4015,6 +4015,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   } else {
     weights_i <- rep(1.0, n_obs)
   }
+  contrib_lik <- is_y_observed == 1L & weights_i > 0
+  if (!any(contrib_lik)) {
+    cli::cli_abort(c(
+      "Every observation has zero likelihood weight or a masked response, so nothing contributes to the objective.",
+      "i" = "With {.arg weights}, each row needs a positive weight on an observed response cell.",
+      ">" = "Drop all-zero weights, restore at least one observed response, or check {.arg missing} settings."
+    ), class = "gllvmTMB_all_zero_likelihood_weight")
+  }
   weighted_objective <- any(
     !(family_id_vec %in% c(1L, 8L)) &
       !masked_response &

@@ -4030,6 +4030,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   trait_id        <- as.integer(data[[trait]]) - 1L
   site_id         <- as.integer(data[[site]]) - 1L
   site_species_id <- as.integer(data[[ss_name]]) - 1L
+  .gllvmTMB_check_unique_observed_cells(
+    unit_id = site_id,
+    trait_id = trait_id,
+    family_id_vec = family_id_vec,
+    n_trials = n_trials,
+    is_y_observed = is_y_observed,
+    weights_i = weights_i
+  )
 
   ## ---- Opt-in variational route (integration = "va") --------------------
   ## Every engine input now exists in the right form, and nothing of the

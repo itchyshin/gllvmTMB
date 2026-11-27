@@ -255,33 +255,35 @@ test_that("unconditional simulate() on a rho-enabled fit refuses when a tier can
 
 ## ---- simulate(newdata = ) Gaussian fallback warning ------------------------------
 
-test_that("simulate(newdata =) warns once per session that it falls back to Gaussian draws", {
+test_that("simulate(newdata =) uses family-aware draws on single-family fits", {
   skip_on_cran()
   fit <- .refusal_gauss_fit()
   cache_key <- "gllvmTMB.warned_simulate_newdata_gaussian_fallback"
   withr::local_options(stats::setNames(list(NULL), cache_key))
+  expect_no_warning(
+    sim1 <- suppressMessages(simulate(fit, nsim = 1L, newdata = fit$data, seed = 1L))
+  )
+  expect_equal(nrow(sim1), nrow(fit$data))
   expect_null(getOption(cache_key))
+})
 
+test_that("simulate(newdata =) warns once per session when per-row family lookup fails", {
+  skip_on_cran()
+  fit <- .refusal_gauss_fit()
+  nd <- fit$data[1:4, ]
+  cache_key <- "gllvmTMB.warned_simulate_newdata_gaussian_fallback"
+  withr::local_options(stats::setNames(list(NULL), cache_key))
+  testthat::local_mocked_bindings(
+    .gllvmTMB_newdata_simulate_row_meta = function(...) NULL,
+    .package = "gllvmTMB"
+  )
   w <- expect_warning(
-    sim1 <- suppressMessages(simulate(fit, nsim = 1L, newdata = fit$data, seed = 1L)),
+  simulate(fit, nsim = 1L, newdata = nd, seed = 1L),
     class = "gllvmTMB_simulate_newdata_gaussian_fallback"
   )
   msg <- rlang::cnd_message(w)
   expect_match(msg, "falls back to Gaussian-on-link-scale draws", fixed = TRUE)
-  expect_match(msg, "per-row family lookup", fixed = TRUE)
   expect_match(msg, "call `simulate()` without `newdata`", fixed = TRUE)
   expect_true(isTRUE(getOption(cache_key)))
-  expect_equal(nrow(sim1), nrow(fit$data))
-
-  ## Second call in the same session: cached, so no warning.
-  expect_no_warning(suppressMessages(
-    simulate(fit, nsim = 1L, newdata = fit$data, seed = 1L)
-  ))
-
-  ## Clearing the cache key re-arms the warning.
-  options(stats::setNames(list(NULL), cache_key))
-  expect_warning(
-    suppressMessages(simulate(fit, nsim = 1L, newdata = fit$data, seed = 1L)),
-    class = "gllvmTMB_simulate_newdata_gaussian_fallback"
-  )
+  expect_no_warning(simulate(fit, nsim = 1L, newdata = nd, seed = 2L))
 })

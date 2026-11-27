@@ -1708,7 +1708,8 @@ gllvmTMB <- function(
     fixed_formula = parsed$fixed,
     data = data,
     weights = weights,
-    missing = missing
+    missing = missing,
+    trait_col = trait
   )
   data <- observed_response$data
   weights <- observed_response$weights
@@ -2466,8 +2467,42 @@ expand_multinomial_response <- function(formula, data, family, trait_col) {
        expanded = TRUE, K = K, categories = cats, baseline = cats[1L])
 }
 
+## Guess a printable response-column name for long-format formula hints.
+.gllvmTMB_suggest_long_response_col <- function(data, trait_col = "trait") {
+  preferred <- c("value", "y", "response")
+  hit <- intersect(preferred, names(data))
+  if (length(hit) > 0L) return(hit[[1L]])
+  num_cols <- names(data)[vapply(
+    data,
+    function(x) is.numeric(x) || is.integer(x),
+    logical(1L)
+  )]
+  num_cols <- setdiff(num_cols, c(trait_col, "trait"))
+  if (length(num_cols) > 0L) return(num_cols[[1L]])
+  "response"
+}
+
+.gllvmTMB_abort_all_response_rows_missing <- function(
+    fixed_formula, data, trait_col = "trait") {
+  lhs <- if (length(fixed_formula) >= 2L) fixed_formula[[2L]] else NULL
+  if (!is.null(lhs) && .is_zero_plus_trait(lhs, trait_col = trait_col)) {
+    resp_col <- .gllvmTMB_suggest_long_response_col(data, trait_col = trait_col)
+    fml_txt <- paste(deparse(fixed_formula), collapse = " ")
+    cli::cli_abort(c(
+      "Long-format {.fn gllvmTMB} formulas need a {.emph response} column on the left of {.code ~}, not {.code 0 + {trait_col}}.",
+      "i" = "You wrote {.code {fml_txt}}. The per-row response lives in a numeric column (often {.field value}); {.code 0 + {trait_col}} belongs on the right-hand side as the per-trait intercept block.",
+      ">" = "Rewrite as {.code {resp_col} ~ 0 + {trait_col} + ...}, with your response column name in place of {.field {resp_col}} if it differs."
+    ), class = "gllvmTMB_reversed_long_formula")
+  }
+  cli::cli_abort(c(
+    "All response rows are missing.",
+    ">" = "Check the response column was read correctly; at least one observed value is required to fit a model."
+  ))
+}
+
 drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
-                                       missing = miss_control()) {
+                                       missing = miss_control(),
+                                       trait_col = "trait") {
   mf <- stats::model.frame(
     fixed_formula,
     data = data,
@@ -2498,10 +2533,9 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
   ## likelihood is gated by is_y_observed so the row contributes nothing.
   if (identical(missing$response, "include")) {
     if (!any(!response_missing)) {
-      cli::cli_abort(c(
-        "All response rows are missing.",
-        ">" = "Check the response column was read correctly; at least one observed value is required to fit a model."
-      ))
+      .gllvmTMB_abort_all_response_rows_missing(
+        fixed_formula, data, trait_col = trait_col
+      )
     }
     return(list(
       data = data,
@@ -2526,10 +2560,9 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 
   keep <- !response_missing
   if (!any(keep)) {
-    cli::cli_abort(c(
-      "All response rows are missing.",
-      ">" = "Check the response column was read correctly; at least one observed value is required to fit a model."
-    ))
+    .gllvmTMB_abort_all_response_rows_missing(
+      fixed_formula, data, trait_col = trait_col
+    )
   }
 
   if (!is.null(weights)) {

@@ -555,7 +555,8 @@ print.gllvmTMB_screen <- function(x, ...) {
     fixed_formula = parsed$fixed,
     data = data,
     weights = weights,
-    missing = missing
+    missing = missing,
+    trait_col = trait
   )
   data <- observed_response$data
   weights <- normalise_weights(

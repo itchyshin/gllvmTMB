@@ -4,7 +4,9 @@
 
 .gllvmTMB_formula_function_heads <- function(expr) {
   if (!is.call(expr)) return(character())
-  head <- as.character(expr[[1L]])
+  ## A namespace-qualified head (`pkg::fn`) is a call, not a symbol — only
+  ## bare-symbol heads name a formula function (#1966).
+  head <- if (is.name(expr[[1L]])) as.character(expr[[1L]]) else character()
   nested <- unlist(
     lapply(as.list(expr)[-1L], .gllvmTMB_formula_function_heads),
     use.names = FALSE
@@ -83,7 +85,9 @@ parse_multi_formula <- function(formula, trait_col = "trait") {
 
   walk <- function(e, sign = 1L) {
     if (is.call(e)) {
-      fn <- as.character(e[[1L]])
+      ## Only a bare-symbol head names an operator or covstruct keyword; a
+      ## `pkg::fn` head is itself a call (#1966).
+      fn <- if (is.name(e[[1L]])) as.character(e[[1L]]) else ""
       if (fn %in% c("+")) {
         for (i in seq_along(e)[-1L]) walk(e[[i]], sign)
         return(invisible())

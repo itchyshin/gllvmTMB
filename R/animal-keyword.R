@@ -645,12 +645,11 @@ pedigree_to_A <- function(pedigree) {
 #' ## The sparse precision inverts the dense relationship matrix:
 #' all.equal(as.matrix(solve(Ainv)), pedigree_to_A(ped), check.attributes = FALSE)
 pedigree_to_Ainv_sparse <- function(pedigree) {
-  if (!is.data.frame(pedigree) || ncol(pedigree) < 3L) {
-    cli::cli_abort(c(
-      "{.arg pedigree} must be a data frame with at least 3 columns.",
-      "i" = "Expected columns: {.field id}/{.field animal}, {.field sire}/{.field father}, {.field dam}/{.field mother}.",
-      "i" = "Got: {.code {paste(names(pedigree), collapse = ', ')}}."
-    ))
+  if (!is.data.frame(pedigree)) {
+    .gllvm_standardize_pedigree(pedigree, object = "pedigree")
+  }
+  if (ncol(pedigree) < 3L) {
+    .gllvm_standardize_pedigree(pedigree, object = "pedigree")
   }
   ## MCMCglmm-style by-name lookup (same convention as pedigree_to_A).
   ## Falls back to positional access if names are unrecognised.

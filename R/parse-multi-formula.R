@@ -251,6 +251,28 @@ parse_multi_formula <- function(formula, trait_col = "trait") {
 #' Recognises the glmmTMB syntax `rr(0 + trait | site, d = 2)`,
 #' `diag(0 + trait | site)`, etc. Returns a structured list.
 #'
+.gllvm_is_pedigree_to_ainv_call <- function(expr) {
+  if (!is.call(expr)) return(FALSE)
+  fn <- expr[[1L]]
+  if (identical(fn, quote(gllvmTMB::pedigree_to_Ainv_sparse))) return(TRUE)
+  is.call(fn) &&
+    identical(fn[[1L]], as.symbol("::")) &&
+    identical(fn[[3L]], as.symbol("pedigree_to_Ainv_sparse"))
+}
+
+.gllvm_eval_covstruct_extra_arg <- function(expr, eval_env, arg_name) {
+  tryCatch(
+    eval(expr, envir = eval_env),
+    error = function(err) {
+      if (identical(arg_name, "vcv") &&
+          .gllvm_is_pedigree_to_ainv_call(expr)) {
+        stop(err)
+      }
+      expr
+    }
+  )
+}
+
 #' @keywords internal
 #' @noRd
 parse_covstruct_call <- function(e, fn, eval_env = parent.frame(),
@@ -282,8 +304,11 @@ parse_covstruct_call <- function(e, fn, eval_env = parent.frame(),
     extra_names <- names(extra_args)
     for (i in seq_along(extra_args)) {
       nm <- if (is.null(extra_names) || nchar(extra_names[i]) == 0L) NULL else extra_names[i]
-      val <- tryCatch(eval(extra_args[[i]], envir = eval_env),
-                      error = function(err) extra_args[[i]])
+      val <- .gllvm_eval_covstruct_extra_arg(
+        extra_args[[i]],
+        eval_env = eval_env,
+        arg_name = nm
+      )
       if (is.null(nm)) {
         ## Positional — for rr() this is the rank d
         if (fn == "rr") nm <- "d"

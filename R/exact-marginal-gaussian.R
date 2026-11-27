@@ -1,3 +1,32 @@
+# Refuse duplicate (unit, trait) rows except replicated single-trial binomial cells.
+.gllvmTMB_check_unique_observed_cells <- function(
+    unit_id, trait_id, family_id_vec, n_trials, is_y_observed, weights_i) {
+  obs <- which(is_y_observed == 1L & weights_i > 0)
+  if (!length(obs)) {
+    return(invisible(NULL))
+  }
+  cells <- paste(unit_id[obs], trait_id[obs], sep = ":")
+  if (!any(duplicated(cells))) {
+    return(invisible(NULL))
+  }
+  dup_keys <- unique(cells[duplicated(cells)])
+  for (key in dup_keys) {
+    rows <- obs[cells == key]
+    bernoulli_rep <- all(family_id_vec[rows] %in% c(1L, 19L)) &&
+      all(n_trials[rows] == 1L)
+    if (bernoulli_rep) {
+      next
+    }
+    cli::cli_abort(c(
+      "Long-format data has more than one row for the same unit-trait cell.",
+      "x" = "At least one {.emph (unit, trait)} key appears on {length(rows)} rows (e.g. {.val {key}}).",
+      "i" = "Stacked-trait likelihoods expect one row per cell unless single-trial binomial rows are intentionally replicated.",
+      ">" = "Deduplicate or aggregate the data, or use {.code cbind(successes, failures)} / {.arg weights} as trial counts for multi-trial binomial traits."
+    ), class = "gllvmTMB_duplicate_unit_trait_cell")
+  }
+  invisible(NULL)
+}
+
 # Validate the record index used by the paired-kernel marginal likelihood.
 .gllvmTMB_check_unique_marginal_cells <- function(unit_id, trait_id) {
   if (length(unit_id) != length(trait_id)) {

@@ -1102,6 +1102,8 @@ summary.gllvmTMB_multi <- function(object, ...) {
     }
     if (isTRUE(object$likelihood_weights$active)) {
       df$Std.Err[] <- NA_real_
+    } else if (!is.null(.gllvmTMB_wald_unusable_reason(object))) {
+      df$Std.Err[] <- NA_real_
     }
     out$fixef <- df
   }
@@ -1170,6 +1172,20 @@ summary.gllvmTMB_multi <- function(object, ...) {
     list(
       available = FALSE,
       reason = object$sdreport_error %||% "no sd_report on this fit"
+    )
+  } else if (!is.null(wald_bad <- .gllvmTMB_wald_unusable_reason(object))) {
+    list(
+      available = FALSE,
+      reason = if (identical(wald_bad, "non_positive_definite_hessian")) {
+        paste(
+          "standard errors are not reliable:",
+          "the Hessian is not positive-definite (pdHess = FALSE)"
+        )
+      } else {
+        "standard errors are not available"
+      },
+      wald_unusable = wald_bad,
+      non_finite = identical(wald_bad, "non_positive_definite_hessian")
     )
   } else if (!is.null(out$fixef) && nrow(out$fixef) > 0L &&
              !any(is.finite(out$fixef$Std.Err))) {

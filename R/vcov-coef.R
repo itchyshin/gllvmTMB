@@ -123,6 +123,15 @@ vcov.gllvmTMB_multi <- function(object, ...) {
   .confint_require_sdreport(object, method = "wald", caller = "vcov",
                             route = NULL)
 
+  if (!is.null(wald_bad <- .gllvmTMB_wald_unusable_reason(object))) {
+    out <- matrix(NA_real_, length(nm), length(nm), dimnames = list(nm, nm))
+    attr(out, "inference_status") <- wald_bad
+    if (identical(wald_bad, "non_positive_definite_hessian")) {
+      .wald_warn_nonpd_hessian(object, "covariance")
+    }
+    return(out)
+  }
+
   cv <- object$sd_report$cov.fixed
   out <- matrix(NA_real_, length(nm), length(nm), dimnames = list(nm, nm))
   if (!is.null(object$fixed_effect_priors) ||

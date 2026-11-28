@@ -160,6 +160,7 @@ Register rows deliberately NOT translated into a ledger capability row above, wi
 | COE-04 | R-only cross-lineage coevolution capability; no Julia twin row |
 | FAM-18 | R-only aspirational mixture families (gamma_mix/lognormal_mix/nbinom2_mix), blocked on the R side too; no Julia twin to compare against |
 | FAM-19 | R-only aspirational generalized-gamma family (gengamma), blocked on the R side too; no Julia twin |
+| FE-PRIOR-02 | Shared prior-table support is partial; the frozen Julia comparison ledger predates this table route, so no equivalent ledger row is claimed |
 | FG-14 | meta_V() parser row; folds into the MET-* meta-analysis rows above, all R-only |
 | FG-16 | R-only legacy `gllvmTMB_wide()` matrix constructor, soft-deprecated; no Julia twin |
 | FG-17 | Deliberately rejected parser grammar (slash-form nesting `(1 | g1/g2)`); no Julia grammar-rejection concept to compare against |

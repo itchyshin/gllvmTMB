@@ -22,3 +22,9 @@ The Psi Gamma guide now states that the mean must be finite and positive and
 the shape finite and greater than one. The article rendered on unchanged
 production source with exit 0; rendered HTML SHA-256:
 `30b7db38668550691e2ba56ad0044328ffc3b0daa15f470ddc7dc5fd1729f101`.
+
+The capability-ledger generator now accounts for the partial shared-table
+record without claiming a row in the frozen Julia comparison ledger. The
+generator and its `--check` passed with zero unaccounted rows; the focused
+parity-ledger test passed in an isolated Git-backed checkout. The repeated
+Beta MSPL decomposition failure is separate and remains unresolved.

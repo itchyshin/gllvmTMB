@@ -113,10 +113,21 @@
   affected <- c(binomial_labs, multinomial_labs, ordinal_labs)
   n_affected <- length(affected)
   noun <- if (n_affected == 1L) "trait" else "traits"
+  n_kinds <- sum(c(length(binomial_labs), length(multinomial_labs),
+                   length(ordinal_labs)) > 0L)
+  kind <- if (n_kinds != 1L) {
+    "binary / categorical-contrast / single-observation ordinal"
+  } else if (length(binomial_labs) > 0L) {
+    "binary"
+  } else if (length(multinomial_labs) > 0L) {
+    "categorical-contrast"
+  } else {
+    "single-observation ordinal"
+  }
   msg <- c(
     "i" = sprintf(
-      "Skipping the default between-unit {.field Psi} for %d binary / categorical-contrast / single-observation ordinal %s under the family-specific identifiability gate.",
-      n_affected, noun
+      "Skipping the default between-unit {.field Psi} for %d %s %s under the family-specific identifiability gate.",
+      n_affected, kind, noun
     ),
     "i" = sprintf("Affected %s: %s.", noun, paste(affected, collapse = ", "))
   )
@@ -145,7 +156,7 @@
     )
   }
   c(msg,
-    "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off."
+    "*" = "These traits get no between-unit {.field Psi}; any other traits keep theirs."
   )
 }
 

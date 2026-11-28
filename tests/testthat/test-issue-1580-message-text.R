@@ -3,7 +3,10 @@
 ##   - extract_Sigma() on a kernel_latent() tier advised a phylo_latent()
 ##     refit and talked about a "phylo-equivalent engine path";
 ##   - summary() on a latent(..., unique = FALSE) fit printed the
-##     "Sigma_unit is latent-only" note three times per call.
+##     "Sigma_unit is latent-only" note three times per call;
+##   - the auto-Psi skip note for multinomial traits named internal TMB
+##     parameters (`theta_diag_B[t]`, `s_B`) and listed trait kinds that the
+##     fit did not contain.
 
 collect_messages <- function(expr) {
   msgs <- character()
@@ -81,4 +84,87 @@ test_that("summary() prints the latent-only note once per call (#1580)", {
                fixed = TRUE)
   ## The summary payload is still filled in.
   expect_false(is.null(got$value$Sigma_B))
+})
+
+test_that("auto-Psi skip note names only the kind of trait it skipped (#1580)", {
+  header <- function(...) {
+    msg <- gllvmTMB:::.auto_psi_skip_message(...)
+    unname(msg)[[1L]]
+  }
+  multinomial_only <- header(multinomial_labs = c("cat:2", "cat:3"))
+  expect_match(multinomial_only, "for 2 categorical-contrast traits",
+               fixed = TRUE)
+  expect_no_match(multinomial_only, "binary", fixed = TRUE)
+  expect_no_match(multinomial_only, "ordinal", fixed = TRUE)
+
+  expect_match(header(binomial_labs = "b"), "for 1 binary trait", fixed = TRUE)
+  expect_no_match(header(binomial_labs = "b"), "categorical-contrast",
+                  fixed = TRUE)
+  ordinal_only <- header(ordinal_labs = c("o1", "o2"))
+  expect_match(ordinal_only, "for 2 single-observation ordinal traits",
+               fixed = TRUE)
+  expect_no_match(ordinal_only, "binary", fixed = TRUE)
+
+  ## A fit that skips more than one kind keeps the umbrella wording.
+  expect_match(header(binomial_labs = "b", ordinal_labs = "o"),
+               "for 2 binary / categorical-contrast / single-observation ordinal traits",
+               fixed = TRUE)
+})
+
+test_that("auto-Psi skip note does not expose internal TMB parameter names (#1580)", {
+  for (msg in list(
+    gllvmTMB:::.auto_psi_skip_message(multinomial_labs = c("cat:2", "cat:3")),
+    gllvmTMB:::.auto_psi_skip_message(binomial_labs = "b"),
+    gllvmTMB:::.auto_psi_skip_message(ordinal_labs = "o"),
+    gllvmTMB:::.auto_psi_skip_message(binomial_labs = "b",
+                                      multinomial_labs = "cat:2",
+                                      ordinal_labs = "o")
+  )) {
+    text <- paste(unname(msg), collapse = " ")
+    expect_no_match(text, "theta_diag_B", fixed = TRUE)
+    expect_no_match(text, "s_B", fixed = TRUE)
+    expect_match(text, "no between-unit", fixed = TRUE)
+  }
+})
+
+test_that("a Gaussian + multinomial fit prints the plain-language Psi skip note (#1580)", {
+  skip_on_cran()
+  set.seed(1580)
+  N <- 60L
+  Lam <- matrix(c(1.3, 0.4, 1.0, 0.6, -0.6, 0.9), 3, byrow = TRUE)
+  u <- matrix(stats::rnorm(N * 2L), N, 2L) %*% t(Lam)
+  yc <- vapply(seq_len(N), function(i) {
+    p <- c(1, exp(u[i, 2]), exp(u[i, 3]))
+    sample.int(3L, 1L, prob = p / sum(p))
+  }, integer(1))
+  dat <- rbind(
+    data.frame(unit = seq_len(N), trait = "cat", family = "m", value = yc),
+    data.frame(unit = seq_len(N), trait = "g", family = "g",
+               value = u[, 1] + stats::rnorm(N, sd = 0.25))
+  )
+  dat$unit <- factor(dat$unit)
+  dat$trait <- factor(dat$trait)
+  dat$family <- factor(dat$family)
+  fam <- list(g = gaussian(), m = multinomial())
+  attr(fam, "family_var") <- "family"
+  withr::local_options(rlib_message_verbosity = "verbose")
+  freq_env <- getFromNamespace("message_freq_env", "rlang")
+  ids <- "gllvmTMB-psi-skip-multinomial"
+  rlang::env_unbind(freq_env, ids)
+  withr::defer(rlang::env_unbind(freq_env, ids))
+
+  got <- collect_messages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = dat, family = fam, trait = "trait", unit = "unit", silent = TRUE,
+    control = gllvmTMBcontrol(se = FALSE, n_init = 1L)
+  )))
+  skip_note <- gsub("\\s+", " ", paste(
+    got$messages[grepl("Skipping the default between-unit", got$messages)],
+    collapse = " "
+  ))
+  expect_match(skip_note, "for 2 categorical-contrast traits", fixed = TRUE)
+  expect_match(skip_note, "cat:2, cat:3", fixed = TRUE)
+  expect_no_match(skip_note, "theta_diag_B", fixed = TRUE)
+  expect_no_match(skip_note, "s_B", fixed = TRUE)
+  expect_no_match(skip_note, "binary", fixed = TRUE)
 })

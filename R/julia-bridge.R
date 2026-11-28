@@ -2415,6 +2415,30 @@ gllvm_julia_capabilities <- function() {
   mask
 }
 
+.gllvm_julia_check_N_dimensions <- function(N, p, n) {
+  if (is.null(N)) {
+    return(invisible(NULL))
+  }
+  if (length(N) == 1L) {
+    return(invisible(NULL))
+  }
+  out <- as.matrix(N)
+  if (identical(dim(out), c(n, p))) {
+    out <- t(out)
+  }
+  if (!identical(dim(out), c(p, n))) {
+    stop(
+      "engine = 'julia': `N` must be ",
+      p,
+      " x ",
+      n,
+      " (traits x units) after applying `units_are_rows`.",
+      call. = FALSE
+    )
+  }
+  invisible(NULL)
+}
+
 .gllvm_julia_trials_matrix <- function(object, p, n) {
   trials <- object$bridge_input$N %||% NULL
   if (is.null(trials)) {
@@ -2428,13 +2452,7 @@ gllvm_julia_capabilities <- function() {
       out <- t(out)
     }
   }
-  if (!identical(dim(out), c(p, n))) {
-    stop(
-      "engine = 'julia': binomial trial-count payload dimensions do not ",
-      "match the fit.",
-      call. = FALSE
-    )
-  }
+  .gllvm_julia_check_N_dimensions(out, p, n)
   storage.mode(out) <- "numeric"
   if (any(!is.finite(out) | out <= 0)) {
     stop(
@@ -2855,6 +2873,9 @@ gllvm_julia_fit <- function(
     if (!is.null(N) && !is.null(dim(N))) {
       N <- t(N)
     }
+  }
+  if (!is.null(N)) {
+    .gllvm_julia_check_N_dimensions(N, nrow(y), ncol(y))
   }
   has_x <- .gllvm_julia_has_covariates(X)
   .gllvm_julia_check_gamma_shape(fam, nrow(y), has_x = has_x)

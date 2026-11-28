@@ -170,3 +170,18 @@ test_that("Gamma table rows attach a normalized natural-SD penalty to the named 
                tolerance = 1e-12)
   expect_identical(penalized$kernel_psi_sd_prior$jacobian, FALSE)
 })
+
+test_that("Gamma unique-variance rows remain unsupported on the MSPL route", {
+  psi <- data.frame(
+    prior = "gamma(2,3.6)", class = "unique_variance", trait = "t2",
+    kernel = "pine", scale = "natural_sd", stringsAsFactors = FALSE
+  )
+  control <- .gllvmTMB_adapt_prior_table(gllvmTMBcontrol(priors = psi))
+  expect_error(
+    .gllvmTMB_kernel_psi_sd_prior_route(
+      control$kernel_psi_sd_prior, engine = "tmb", estimator = "mspl",
+      REML = FALSE, control = control
+    ),
+    class = "gllvmTMB_kernel_psi_prior_unsupported"
+  )
+})

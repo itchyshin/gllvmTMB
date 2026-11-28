@@ -4195,7 +4195,36 @@ predict.gllvmTMB_multi <- function(
     attr(out, "se.fit.scale") <- type
     attr(out, "se.fit.conditional") <- TRUE
   }
+  class(out) <- unique(c("gllvmTMB_predict", class(out)))
   out
+}
+
+#' Coerce gllvmTMB predict() output to the fitted value vector
+#'
+#' @param x A data frame returned by [predict.gllvmTMB_multi()].
+#' @param ... Not used.
+#' @keywords internal
+#' @export
+as.numeric.gllvmTMB_predict <- function(x, ...) {
+  if (!"est" %in% names(x)) {
+    cli::cli_abort(
+      "{.fn as.numeric} on a {.cls gllvmTMB_predict} object requires an {.field est} column; use {.code $est} explicitly.",
+      class = "gllvmTMB_predict_as_numeric_no_est"
+    )
+  }
+  as.numeric(x$est)
+}
+
+#' @rdname as.numeric.gllvmTMB_predict
+#' @export
+as.double.gllvmTMB_predict <- function(x, ...) {
+  if (!"est" %in% names(x)) {
+    cli::cli_abort(
+      "{.fn as.double} on a {.cls gllvmTMB_predict} object requires an {.field est} column; use {.code $est} explicitly.",
+      class = "gllvmTMB_predict_as_double_no_est"
+    )
+  }
+  as.double(x$est)
 }
 
 #' Fitted values from a fitted gllvmTMB model

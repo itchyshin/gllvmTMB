@@ -40,8 +40,9 @@ specified posterior fit.
 
 For a named kernel with `unique = TRUE`, a `unique_variance` row instead
 targets the trait-specific SD `sqrt(Psi[t,t])`. The row uses `trait` and
-`kernel` selectors; `coef` and `dpar` are empty. The same natural-SD density
-convention applies, and the normalized Psi penalty can be combined with
+`kernel` selectors; `coef` and `dpar` are empty. The Gamma mean must be finite
+and positive, and its shape must be finite and greater than one. The same
+natural-SD density convention applies, and the normalized Psi penalty can be combined with
 fixed-effect and residual-SD rows when the complete-data, unit-weight Gaussian
 route is supported. The legacy `kernel_psi_sd_prior` control remains available
 for half-normal sensitivity fits.

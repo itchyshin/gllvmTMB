@@ -17,3 +17,8 @@ The candidate's production code is identical to `540be304`, on which the public-
 A scoped Rose-perspective consistency check compared the article introduction, supported-rows table and example with the source tests and the partial validation register. The table and example already included the named-kernel Psi SD; the introduction now agrees with them. The natural-SD Gamma table route remains distinct from the half-normal control. The register entry is `partial`, because broader model routes, calibrated uncertainty, and the GLLVM R-to-Julia bridge are not established. The earlier fixture review and oracle evidence remain source-bound to their recorded versions.
 
 The first article-check attempt passed `pkgdown::check_pkgdown()` but stopped before rendering because its output directory was not supplied. A separate corrected attempt rendered successfully. The original GitHub failure and both attempts are preserved. At this check, the existing GitHub coverage run was queued; repository CI pacing required it to finish before the follow-up push. No PR was merged or released.
+
+The Psi Gamma guide now states that the mean must be finite and positive and
+the shape finite and greater than one. The article rendered on unchanged
+production source with exit 0; rendered HTML SHA-256:
+`30b7db38668550691e2ba56ad0044328ffc3b0daa15f470ddc7dc5fd1729f101`.

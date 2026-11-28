@@ -112,6 +112,61 @@
 ## Returns a numeric vector of length n_traits, one entry per trait. A trait
 ## with multiple families or links is not reduced to a modal shortcut: its
 ## residual variance is returned as NA with a warning.
+.link_residual_unsupported_link <- function(trait, family_label, link_label) {
+  cli::cli_abort(c(
+    "{family_label} link-residual variance is not defined for link {.val {link_label}}.",
+    "i" = "Trait {.val {trait}} uses this family/link pair.",
+    ">" = "Use a supported link for link-residual summaries, or set {.code link_residual = \"none\"}."
+  ), class = "gllvmTMB_link_residual_unsupported_link")
+}
+
+.link_residual_trait_link_name <- function(fid, lid) {
+  lid <- as.integer(lid[[1L]])
+  if (fid == 1L) {
+    nm <- .gllvmTMB_mspl_link_name(lid)
+    if (!is.na(nm)) {
+      return(nm)
+    }
+  }
+  if (fid %in% c(2L, 4L, 5L, 6L, 10L, 11L, 15L) && identical(lid, 0L)) {
+    return("log")
+  }
+  if (fid %in% c(7L, 8L) && identical(lid, 0L)) {
+    return("logit")
+  }
+  nm <- .gllvmTMB_mspl_link_name(lid)
+  if (!is.na(nm)) {
+    return(nm)
+  }
+  paste0("link_id ", lid)
+}
+
+.link_residual_assert_log_link <- function(trait, family_label, lids_rows) {
+  lids_t <- unique(lids_rows)
+  if (length(lids_t) == 1L && identical(as.integer(lids_t), 0L)) {
+    return(invisible(NULL))
+  }
+  link_label <- if (length(lids_t) == 1L) {
+    .link_residual_trait_link_name(2L, lids_t)
+  } else {
+    "multiple links"
+  }
+  .link_residual_unsupported_link(trait, family_label, link_label)
+}
+
+.link_residual_assert_logit_link <- function(trait, family_label, lids_rows) {
+  lids_t <- unique(lids_rows)
+  if (length(lids_t) == 1L && identical(as.integer(lids_t), 0L)) {
+    return(invisible(NULL))
+  }
+  link_label <- if (length(lids_t) == 1L) {
+    .link_residual_trait_link_name(7L, lids_t)
+  } else {
+    "multiple links"
+  }
+  .link_residual_unsupported_link(trait, family_label, link_label)
+}
+
 link_residual_per_trait <- function(fit) {
   trait_names <- levels(fit$data[[fit$trait_col]])
   Tn <- length(trait_names)
@@ -173,15 +228,22 @@ link_residual_per_trait <- function(fit) {
         out[t] <- NA_real_
         next
       }
-      out[t] <- switch(
-        as.character(lid_t),
-        "0" = pi^2 / 3, # logit
-        "1" = 1, # probit
-        "2" = pi^2 / 6, # cloglog
-        NA_real_
-      )
+      if (lid_t == 0L) {
+        out[t] <- pi^2 / 3 # logit
+      } else if (lid_t == 1L) {
+        out[t] <- 1 # probit
+      } else if (lid_t == 2L) {
+        out[t] <- pi^2 / 6 # cloglog
+      } else {
+        .link_residual_unsupported_link(
+          trait_names[t],
+          "Binomial",
+          .link_residual_trait_link_name(1L, lid_t)
+        )
+      }
     } else if (fid == 2L) {
       # poisson, log link
+      .link_residual_assert_log_link(trait_names[t], "Poisson", lids[rows_t])
       ## Lognormal-Poisson approximation: sigma2_d = log(1 + 1 / mu_t).
       ## Use exp(eta) averaged across the trait's rows as the per-trait
       ## fitted mean. (Nakagawa & Schielzeth 2010, Table 2.)
@@ -233,6 +295,7 @@ link_residual_per_trait <- function(fit) {
       }
     } else if (fid == 7L) {
       # Beta, logit link
+      .link_residual_assert_logit_link(trait_names[t], "Beta", lids[rows_t])
       ## Delta-method residual variance for logit(Y) under a Beta(a, b)
       ## response with a = mu*phi, b = (1-mu)*phi: Var(logit Y) =
       ## trigamma(a) + trigamma(b). Smithson & Verkuilen 2006 Eq. 9.
@@ -258,6 +321,9 @@ link_residual_per_trait <- function(fit) {
       }
     } else if (fid == 8L) {
       # beta-binomial, logit link
+      .link_residual_assert_logit_link(
+        trait_names[t], "Beta-binomial", lids[rows_t]
+      )
       ## On the logit-link latent scale, beta-binomial decomposes into the
       ## binomial-logit baseline pi^2 / 3 (Nakagawa & Schielzeth 2010) plus
       ## the Beta(a, b) overdispersion residual trigamma(a) + trigamma(b)

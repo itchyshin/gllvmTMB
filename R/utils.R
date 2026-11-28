@@ -27,7 +27,11 @@ extract_call_name <- function(call_element, max_width = 80) {
     text <- as.character(call_element)
   }
   if (nchar(text) > max_width) {
-    text <- paste0(substr(text, 1L, max_width - 1L), "...")
+    if (max_width <= 3L) {
+      text <- substr(text, 1L, max_width)
+    } else {
+      text <- paste0(substr(text, 1L, max_width - 3L), "...")
+    }
   }
   text
 }

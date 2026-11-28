@@ -21,6 +21,17 @@
   ## #1759 / #1768. gllvm's generics mask getLoadings/getLV/getResidualCov/
   ## getResidualCor/simulate when that package is attached. Register on gllvm's
   ## S3 table at load, and again if gllvm is attached later in the session.
+  if (isTRUE(.gllvm_mask_hook_installed)) {
+    hooks <- getHook(packageEvent("gllvm", "onLoad"))
+    hooked <- length(hooks) > 0L && any(vapply(
+      hooks,
+      function(h) identical(h, .gllvm_mask_on_gllvm_load),
+      logical(1L)
+    ))
+    if (!hooked) {
+      utils::assignInMyNamespace(".gllvm_mask_hook_installed", FALSE)
+    }
+  }
   if (!isTRUE(.gllvm_mask_hook_installed)) {
     setHook(
       packageEvent("gllvm", "onLoad"),
@@ -35,5 +46,8 @@
 }
 
 .onUnload <- function(libpath) {
+  if (exists(".gllvm_mask_hook_installed", envir = asNamespace("gllvmTMB"), inherits = FALSE)) {
+    utils::assignInMyNamespace(".gllvm_mask_hook_installed", FALSE)
+  }
   library.dynam.unload("gllvmTMB", libpath)
 }

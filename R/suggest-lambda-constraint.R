@@ -119,7 +119,11 @@
 #'   \describe{
 #'     \item{`constraint`}{A `T x K` matrix with `NA` in free entries and
 #'       0 (or 1, for `"pin_top_one"`) in pinned entries. Has trait names
-#'       as rownames and `"f1", ..., "fK"` as colnames.}
+#'       as rownames and `"f1", ..., "fK"` as colnames. For
+#'       `"varimax_threshold"` and `"wald_retention"` the columns keep the
+#'       varimax axis order. [gllvmTMB()] holds entries above the diagonal at
+#'       0, so a warning names any trait left with no estimable loading and,
+#'       when one exists, a column order that keeps every loading estimable.}
 #'     \item{`convention`}{The chosen convention.}
 #'     \item{`d`}{The number of factors `K`.}
 #'     \item{`n_pins`}{Number of pinned entries.}
@@ -576,6 +580,30 @@ suggest_lambda_constraint <- function(
       "No pins. Returned matrix is all NA. Use this if you intend to ",
       "rotate the fitted Lambda after fitting (e.g. varimax)."
     )
+  }
+
+  ## The varimax conventions pin in the rotated frame, but gllvmTMB() applies
+  ## the matrix to its lower-triangular loadings, where a free entry above the
+  ## diagonal is held at 0. A trait whose only free entries sit there gets no
+  ## shared loading at all (#1585).
+  if (convention %in% c("varimax_threshold", "wald_retention") && K > 1L) {
+    lost <- .lambda_unestimable_rows(M)
+    if (length(lost) > 0L) {
+      lost_lab <- .lambda_row_labels(M, lost)
+      ord <- .lambda_engine_frame_order(M)
+      fixed <- !identical(ord, seq_len(K)) &&
+        length(.lambda_unestimable_rows(M[, ord, drop = FALSE])) == 0L
+      fix_cmd <- paste0("constraint[, c(", paste(ord, collapse = ", "), ")]")
+      cli::cli_warn(c(
+        "The suggested constraint leaves {.val {lost_lab}} with no estimated loading in {.fn gllvmTMB}.",
+        "x" = "{cli::qty(length(lost))}Every entry on or below the diagonal of {?this row/these rows} is pinned at 0, and the free entries sit above the diagonal, where the lower-triangular loadings are fixed at 0.",
+        if (fixed) {
+          c(">" = "Pass {.code {fix_cmd}} instead: the order of rotated axes carries no meaning, and this order keeps every loading estimable.")
+        } else {
+          c(">" = "{cli::qty(length(lost))}Reorder the traits so {?this trait/these traits} {?is/are} not among the first rows, or use {.code convention = \"lower_triangular\"}.")
+        }
+      ))
+    }
   }
 
   ## `level` has been normalised to the internal slot name (`B`/`W`).

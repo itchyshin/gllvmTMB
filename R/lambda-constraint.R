@@ -106,6 +106,67 @@ dep_chol_parity_pins <- function(C) {
   pins
 }
 
+## Rows of a constraint matrix left with no estimable shared loading: every
+## entry on or below the diagonal is pinned at 0, and the entries left free
+## (NA) all sit in the strict upper triangle, which the packed lower-triangular
+## loadings hold at 0. The trait's intended free loading is silently not
+## estimated (#1585).
+.lambda_unestimable_rows <- function(M) {
+  K <- ncol(M)
+  rows <- integer(0)
+  for (i in seq_len(min(nrow(M), K - 1L))) {
+    lower <- M[i, seq_len(i)]
+    upper <- M[i, (i + 1L):K]
+    if (any(is.na(upper)) && !anyNA(lower) &&
+        all(as.numeric(lower) == 0)) {
+      rows <- c(rows, i)
+    }
+  }
+  rows
+}
+
+.lambda_row_labels <- function(M, rows) {
+  rn <- rownames(M)
+  if (is.null(rn)) return(as.character(rows))
+  ifelse(nzchar(rn[rows]), rn[rows], as.character(rows))
+}
+
+## Column order for a constraint whose axis order carries no meaning (e.g.
+## varimax-rotated axes) that best fits the packed lower-triangular frame
+## (reported, not applied, by suggest_lambda_constraint()):
+## fewest free (NA) entries in the strict upper triangle, where they cannot be
+## estimated, then fewest diagonals pinned at 0. Ties keep the given order.
+.lambda_engine_frame_order <- function(M) {
+  K <- ncol(M)
+  ident <- seq_len(K)
+  if (K < 2L || K > 7L) return(ident)
+  n_diag <- min(nrow(M), K)
+  score <- function(p) {
+    Mp <- M[, p, drop = FALSE]
+    d <- Mp[cbind(seq_len(n_diag), seq_len(n_diag))]
+    c(sum(is.na(Mp[upper.tri(Mp)])), sum(!is.na(d) & d == 0))
+  }
+  perms <- function(v) {
+    if (length(v) <= 1L) return(list(v))
+    out <- list()
+    for (k in seq_along(v)) {
+      for (rest in perms(v[-k])) out[[length(out) + 1L]] <- c(v[k], rest)
+    }
+    out
+  }
+  best <- ident
+  best_score <- score(ident)
+  for (p in perms(ident)) {
+    s <- score(p)
+    if (s[1] < best_score[1] ||
+        (s[1] == best_score[1] && s[2] < best_score[2])) {
+      best <- p
+      best_score <- s
+    }
+  }
+  best
+}
+
 lambda_packed_map <- function(constraint, n_traits, rank, theta_init) {
   if (!is.matrix(constraint))
     cli::cli_abort("lambda_constraint entries must be matrices.")

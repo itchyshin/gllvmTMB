@@ -8885,17 +8885,28 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## optimisation to the default fit; restart 1 is still the default start,
   ## so the returned fit only changes when the svd start reaches a strictly
   ## lower objective. Jittered restarts (`n_init > 1`) follow it.
+  ## Under a `lambda_constraint` (a mapped `theta_rr_B`) the svd start fills
+  ## only the free slots; pinned loadings keep their values (#1585).
   svd_restart <- NULL
+  theta_rr_B_map <- tmb_map[["theta_rr_B"]]
+  theta_rr_B_fixed <- tmb_params$theta_rr_B
   if (!isFALSE(control$svd_start) && !is.null(svd_latent_start) &&
       identical(estimator, "ml") && !isTRUE(start_provenance$start_from) &&
-      is.null(start_method$method) && is.null(tmb_map[["theta_rr_B"]])) {
+      is.null(start_method$method)) {
     theta_idx <- which(names(obj$par) == "theta_rr_B")
     z_idx <- which(names(obj$env$par) == "z_B")
-    if (length(theta_idx) == length(svd_latent_start$theta) &&
+    theta_free <- if (is.null(theta_rr_B_map)) {
+      seq_along(svd_latent_start$theta)
+    } else {
+      match(seq_len(nlevels(theta_rr_B_map)), as.integer(theta_rr_B_map))
+    }
+    if (length(theta_idx) > 0L &&
+        length(theta_idx) == length(theta_free) &&
+        length(theta_rr_B_fixed) == length(svd_latent_start$theta) &&
         length(z_idx) == length(svd_latent_start$z) &&
         all(z_idx %in% obj$env$random)) {
       svd_par <- obj$par
-      svd_par[theta_idx] <- svd_latent_start$theta
+      svd_par[theta_idx] <- svd_latent_start$theta[theta_free]
       svd_restart <- list(par = svd_par, z_idx = z_idx,
                           z = as.vector(svd_latent_start$z))
     }
@@ -8911,7 +8922,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     n_jitter, length(obj$par), control$init_jitter
   )
   jitter_i <- 0L
+  pre_svd_env <- NULL
   for (i in seq_len(n_restarts)) {
+    ## Under a mapped theta_rr_B the svd start is an extra start: the later
+    ## jittered starts see the inner-optimiser state the default start left,
+    ## as they did before the svd start was admitted there (#1585).
+    if (!is.null(pre_svd_env)) {
+      obj$env$last.par <- pre_svd_env$last.par
+      obj$env$last.par.best <- pre_svd_env$last.par.best
+      obj$env$value.best <- pre_svd_env$value.best
+      pre_svd_env <- NULL
+    }
+    if (identical(start_labels[i], "svd") && !is.null(theta_rr_B_map)) {
+      pre_svd_env <- list(
+        last.par = obj$env$last.par,
+        last.par.best = obj$env$last.par.best,
+        value.best = obj$env$value.best
+      )
+    }
     par0 <- switch(
       start_labels[i],
       initial = obj$par,
@@ -9029,8 +9057,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     runaway_blocked <- FALSE
     if (success_i && identical(start_labels[i], "svd") && !is.null(best_opt)) {
       guard <- .gllvmTMB_svd_runaway_blocked(
-        opt_i$par[names(opt_i$par) == "theta_rr_B"],
-        best_opt$par[names(best_opt$par) == "theta_rr_B"],
+        .gllvmTMB_theta_unmap(opt_i$par[names(opt_i$par) == "theta_rr_B"],
+                              theta_rr_B_map, theta_rr_B_fixed),
+        .gllvmTMB_theta_unmap(best_opt$par[names(best_opt$par) == "theta_rr_B"],
+                              theta_rr_B_map, theta_rr_B_fixed),
         n_traits, d_B
       )
       runaway_blocked <- guard$blocked

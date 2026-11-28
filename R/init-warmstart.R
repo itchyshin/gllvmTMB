@@ -613,6 +613,17 @@
 ## the earlier fit's did not? A relative loading that cannot be formed (NA,
 ## e.g. a `theta_rr_B` of the wrong length) never blocks, so a mismatch leaves
 ## the guard a silent no-op and the #1331 selection rule unchanged.
+## Full packed theta from the free (optimised) entries of a mapped parameter:
+## mapped-off slots keep `theta_fixed`. Identity when there is no map.
+.gllvmTMB_theta_unmap <- function(theta_free, map, theta_fixed) {
+  if (is.null(map)) return(theta_free)
+  out <- theta_fixed
+  lev <- as.integer(map)
+  ok <- !is.na(lev)
+  out[ok] <- theta_free[lev[ok]]
+  out
+}
+
 .gllvmTMB_svd_runaway_blocked <- function(theta_new, theta_old, n_traits, rank,
                                           thresh = .gllvmTMB_runaway_thresh_default()) {
   rel_new <- .gllvmTMB_theta_relative_loading(theta_new, n_traits, rank)

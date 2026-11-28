@@ -845,6 +845,22 @@
   invisible(NULL)
 }
 
+## Profile intervals require a trustworthy curvature model at the MAP point.
+## When pdHess is FALSE we withhold numeric bounds (Wald already returns NA).
+.confint_warn_profile_nonpd_hessian <- function(object, what = "profile confidence interval") {
+  if (!isFALSE(object$sd_report$pdHess)) {
+    return(invisible(FALSE))
+  }
+  cli::cli_warn(
+    c(
+      "The Hessian is not positive-definite ({.code pdHess = FALSE}); {what}{?s} are not produced.",
+      "i" = "Diagnose with {.run gllvmTMB_diagnose(fit)}, or use a bootstrap interval ({.code method = \"bootstrap\"})."
+    ),
+    class = "gllvmTMB_profile_nonpd_hessian"
+  )
+  invisible(TRUE)
+}
+
 .confint_colnames <- function(level) {
   c(
     sprintf("%.1f %%", 100 * (1 - level) / 2),
@@ -1321,6 +1337,18 @@
 .confint_profile_targets <- function(object, parm, level, ...) {
   targets <- .profile_targets_build(object, include_unlisted = TRUE)
   chosen <- targets[targets$parm %in% as.character(parm), , drop = FALSE]
+  if (.confint_warn_profile_nonpd_hessian(object)) {
+    rn <- chosen$parm
+    if (length(rn) == 0L) {
+      rn <- as.character(parm)
+    }
+    return(matrix(
+      NA_real_,
+      nrow = length(rn),
+      ncol = 2L,
+      dimnames = list(rn, .confint_colnames(level))
+    ))
+  }
   ## Derived rows are no longer part of profile_targets(), but keep a defensive
   ## error for older serialized inventories.
   derived_rows <- chosen[chosen$target_type == "derived", , drop = FALSE]
@@ -2260,6 +2288,15 @@ confint.gllvmTMB_multi <- function(
 #' @noRd
 .confint_fixef_profile <- function(object, level, rows = NULL) {
   .confint_assert_ml_fixef_profile(object)
+  if (.confint_warn_profile_nonpd_hessian(object, "fixed-effect profile confidence interval")) {
+    td <- tidy(object, "fixed", conf.int = FALSE)
+    td$conf.low <- NA_real_
+    td$conf.high <- NA_real_
+    if (!is.null(rows)) {
+      td <- td[rows, , drop = FALSE]
+    }
+    return(td)
+  }
   ## Loop over b_fix entries via tmbprofile, label as the fixed-effect
   ## term names from $X_fix_names. `rows` (row positions of the tidy fixed
   ## table) limits profiling to the requested terms; other rows get NA.

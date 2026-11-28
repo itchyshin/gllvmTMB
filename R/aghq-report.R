@@ -440,6 +440,24 @@ BIC.gllvmTMB_multi <- function(object, ...) {
   invisible(NULL)
 }
 
+## `fit$formula` stores fixed effects only. For anova()'s `formula` column,
+## append active covariance / latent rank so nested rank comparisons are
+## distinguishable when the fixed-effects deparsed formula is identical.
+.gllvmTMB_anova_formula_display <- function(fit) {
+  fixed <- paste(deparse(fit$formula), collapse = " ")
+  extras <- character(0)
+  if (isTRUE(fit$use$rr_B) && !is.null(fit$d_B) && !is.na(fit$d_B)) {
+    extras <- c(extras, sprintf("latent(d = %d)", as.integer(fit$d_B)))
+  }
+  cluster_col <- fit$cluster_col %||% fit$species_col
+  cov_labels <- .resolve_covstruct_labels(fit$use, cluster_col = cluster_col)
+  if (length(cov_labels)) {
+    extras <- c(extras, cov_labels)
+  }
+  if (!length(extras)) return(fixed)
+  paste(fixed, paste(extras, collapse = " + "), sep = " + ")
+}
+
 ## Classify one adjacent pair (already ordered by ascending npar) as an
 ## interior fixed-effect step, a single-dimension rank step, or a compound
 ## step this implementation refuses. Returns a list describing the step;
@@ -630,7 +648,7 @@ anova.gllvmTMB_multi <- function(object, ..., test = c("chibar", "chisq", "none"
 
   out <- data.frame(
     model = paste0("Model ", seq_len(n_rows)),
-    formula = vapply(objs, function(f) paste(deparse(f$formula), collapse = " "), character(1L)),
+    formula = vapply(objs, .gllvmTMB_anova_formula_display, character(1L)),
     d = d_B_v,
     npar = npar_v,
     logLik = loglik_v,

@@ -746,7 +746,12 @@ Type gll_mspl_bernoulli_loglik(Type y, Type eta, int link_id)
     Type a_hi = exp(hi);
     Type delta = CppAD::CondExpGt(eta, hi, eta - hi, Type(0.0));
     Type p0_tail = -a_hi - a_hi * log(Type(1.0) + delta);
-    Type p0_regular = -exp(eta_direct);
+    // log(1 - p) = -exp(eta) is exact and smooth for every eta below hi.
+    // It must not reuse eta_direct, whose floor at `cut` exists only for
+    // the y = 1 branch: a floored y = 0 row has zero slope below log(1e-4),
+    // a kink the inner Laplace solve cannot converge across (#1020).
+    Type eta_p0 = CppAD::CondExpGt(eta, hi, hi, eta);
+    Type p0_regular = -exp(eta_p0);
     log_p0 = CppAD::CondExpGt(eta, hi, p0_tail, p0_regular);
   } else {
     error("gllvmTMB_multi: MSPL supports only logit, probit, and cloglog links");

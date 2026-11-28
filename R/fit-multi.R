@@ -10217,7 +10217,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## data so original-row accounting is recoverable. `random` records the
       ## TMB random-effect block names (needed to rebuild MakeADFun, e.g. the
       ## sentinel-invariance check).
-      missing_data = .gllvmTMB_build_missing_data(missing_meta, is_y_observed, mi_model),
+      missing_data = .gllvmTMB_build_missing_data(
+        missing_meta, is_y_observed, mi_model, weights_i = weights_i
+      ),
       data_original = if (!is.null(missing_meta)) missing_meta$data_original else data,
       random       = random,
       ## AGHQ provenance (Stage 1a). `used = FALSE` means the fit is the
@@ -10939,7 +10941,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 ## case the slot is built from is_y_observed alone (treated as response="drop"
 ## complete-case when all-ones).
 .gllvmTMB_build_missing_data <- function(missing_meta, is_y_observed,
-                                         mi_model = NULL) {
+                                         mi_model = NULL,
+                                         weights_i = NULL) {
   is_y_observed <- as.integer(is_y_observed)
   n_model <- length(is_y_observed)
   model_row <- seq_len(n_model)
@@ -10972,7 +10975,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## n_missing_response == sum(is_y_observed == 0L). n_dropped distinguishes
   ## the two.
   n_dropped <- max(0L, n_total - n_model)
-  n_likelihood <- sum(is_y_observed == 1L)
+  likelihood_active <- is_y_observed == 1L
+  if (!is.null(weights_i) && length(weights_i) == length(likelihood_active)) {
+    likelihood_active <- likelihood_active & (as.numeric(weights_i) > 0)
+  }
+  n_likelihood <- sum(likelihood_active)
 
   ## Missing-PREDICTOR registry (design 67 / shared contract sec.4b). Empty
   ## list when no mi() term is present; populated (conditional_mode filled

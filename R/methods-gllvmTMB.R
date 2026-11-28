@@ -1517,7 +1517,12 @@ nobs.gllvmTMB_multi <- function(object, ...) {
   if (is.null(iyo)) {
     length(object$tmb_data$y)
   } else {
-    sum(iyo == 1L)
+    active <- iyo == 1L
+    wi <- object$tmb_data$weights_i
+    if (!is.null(wi) && length(wi) == length(active)) {
+      active <- active & (as.numeric(wi) > 0)
+    }
+    sum(active)
   }
 }
 

@@ -1,6 +1,6 @@
 ---
 title: "A prior table for selected GLLVM parameters"
-description: "Use a unified prior table for selected response coefficients, the loading ridge, or the supported Gaussian residual standard deviation."
+description: "Use a unified prior table for supported response coefficients, loading ridge, residual SD, and named-kernel Psi SD."
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -15,12 +15,12 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE, warning 
 library(gllvmTMB)
 ```
 
-`gllvmTMBcontrol(priors = ...)` accepts one table for the response fixed
-coefficients, the existing blanket loading ridge, and a narrowly supported
-Gaussian residual standard deviation. Each row names its target class and
-coefficient. The table keeps distinct quantities explicit: the residual-scale
-prior does not regularize a latent loading or a kernel-specific unique
-variance.
+`gllvmTMBcontrol(priors = ...)` accepts one table for response fixed
+coefficients, the existing blanket loading ridge, a narrowly supported
+Gaussian residual standard deviation, and a named kernel's trait-specific Psi
+standard deviation on the supported Gaussian route. Each row names its target
+class and coefficient or target selectors. These targets remain distinct: a
+residual-SD prior does not regularize a latent loading or a kernel Psi SD.
 
 ## Supported rows
 
@@ -159,10 +159,11 @@ the data or other named fit arguments.
 
 ## Scope boundaries
 
-The table does not yet target named random-effect SDs, correlations,
-latent-score coefficients, slopes of distributional
+The table does not yet target grouping-factor random-intercept or random-slope
+SDs, correlations, latent-score coefficients, slopes of distributional
 parameters, or non-mean distributional parameters. The residual row does not
 support non-Gaussian, missing-response, weighted, REML, MSPL, AGHQ, variational,
 or Julia-engine fits. Unsupported requests fail with an error instead of being
-ignored. Correlation priors and random-effect SD priors are separate future
-slices; they are not implied by support for kernel Psi.
+ignored. Correlation priors and other random-effect SD priors, such as
+grouping-factor intercept or slope SDs, are separate future slices; they are
+not implied by support for kernel Psi.

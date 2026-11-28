@@ -1223,13 +1223,9 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
         convergence
       ))
     } else {
-      objective_label <- if (weighted_objective) {
-        "Weighted objective (-value)"
-      } else if (penalised) {
-        paste(estimator, "log L at MAP point")
-      } else {
-        paste(estimator, "log L")
-      }
+      ## Match print.gllvmTMB_multi(): penalised MAP fits report the
+      ## unpenalised likelihood at the ridge optimum, not "ML log L".
+      objective_label <- x$header$objective_label
       cat(sprintf(
         "  %s = %.3f   convergence = %d   engine = %s\n",
         objective_label,

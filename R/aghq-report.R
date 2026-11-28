@@ -653,7 +653,11 @@ anova.gllvmTMB_multi <- function(object, ..., test = c("chibar", "chisq", "none"
 #' @export
 print.anova.gllvmTMB_multi <- function(x, digits = 4, ...) {
   cat("Likelihood-ratio comparison of gllvmTMB fits\n\n")
-  show <- as.data.frame(x)[, c("model", "d", "npar", "logLik", "deviance", "df", "LRT", "test", "p.value")]
+  full_cols <- c(
+    "model", "d", "npar", "logLik", "deviance", "df", "LRT", "test", "p.value"
+  )
+  show_cols <- intersect(full_cols, names(x))
+  show <- as.data.frame(x)[, show_cols, drop = FALSE]
   print(show, row.names = FALSE, digits = digits)
   notes <- attr(x, "note")
   has_notes <- !is.na(notes)

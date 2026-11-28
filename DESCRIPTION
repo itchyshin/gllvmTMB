@@ -19,6 +19,13 @@ Description: Fits multivariate models for data where each site,
     <doi:10.18637/jss.v070.i05>). This experimental package should be used
     through its documented tutorials and model-specific boundaries; convergence
     alone does not establish that an estimate or interval is reliable.
+    Broad package-wide interval coverage is not yet confirmed. A handful of
+    standardized-loading interval calculations have been checked for one
+    Gaussian model, in a few fixed sample-size and rank combinations, and for
+    one fixed simulated dataset with known true values. They are only for fits that converge cleanly.
+    They do not carry over to other sample sizes, ranks, models, or datasets.
+    Total-variance penalty profiles remain
+    approximate; agreement with the exact answer has not been confirmed.
 License: GPL-3
 Language: en-GB
 Copyright: inst/COPYRIGHTS

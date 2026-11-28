@@ -178,8 +178,7 @@ cell met their prespecified numerical coverage criteria, but the retained
 endpoints do not
 prove constrained-refit convergence and exact target attainment. Every
 computed row remains an approximate calculation rather than a certified exact
-profile. The earlier 0.94 coverage result does not justify exact-profile
-language until the mechanism is repaired and recalibrated.
+profile. Earlier exact-profile certification labels are withdrawn until the mechanism is repaired and recalibrated.
 
 There is one exact loading-interval exception. Standardized symmetric
 joint-delta Wald intervals are certified for the structurally free strict-lower

@@ -10,7 +10,7 @@ test_that("update() tells ordinary fits to refit instead of asking for a call co
   fit <- .ordinary_fit()
   expect_error(
     update(fit, family = stats::gaussian()),
-    regexp = "only supported for temporal"
+    regexp = "supported for temporal latent and prior-table fits"
   )
   err <- tryCatch(
     update(fit, family = stats::gaussian()),

@@ -562,7 +562,8 @@
   H <- .gllvmTMB_loading_ridge_hessian(obj, par, ridge_tau)
   has_fixed_prior <- !is.null(obj$fixed_effect_priors)
   has_kernel_psi_prior <- !is.null(obj$kernel_psi_sd_prior)
-  if ((has_fixed_prior || has_kernel_psi_prior) && is.null(H)) {
+  has_residual_sd_prior <- !is.null(obj$residual_sd_prior)
+  if ((has_fixed_prior || has_kernel_psi_prior || has_residual_sd_prior) && is.null(H)) {
     H <- if (length(obj$env$random) == 0L && is.function(obj$he)) {
       obj$he(par)
     } else stats::optimHess(par, obj$fn, obj$gr)
@@ -577,6 +578,8 @@
       obj$fixed_effect_priors$likelihood_gr(par)
     } else if (has_kernel_psi_prior) {
       obj$kernel_psi_sd_prior$likelihood_gr(par)
+    } else if (has_residual_sd_prior) {
+      obj$residual_sd_prior$likelihood_gr(par)
     } else ans$gradient.fixed
     ans$gradient.fixed <- .gllvmTMB_penalised_gradient(obj, par, ridge_tau)
     if (.gllvmTMB_loading_ridge_applies(ridge_tau, names(obj$par))) {
@@ -597,6 +600,16 @@
       interpretation = "local_approximate_posterior_curvature_at_map",
       calibrated_sampling_covariance = FALSE,
       specification = obj$kernel_psi_sd_prior$specification,
+      parameter_vector = par
+    )
+  }
+  if (has_residual_sd_prior) {
+    attr(ans, "residual_sd_prior_curvature") <- list(
+      interpretation = "local_approximate_posterior_curvature_at_map",
+      calibrated_sampling_covariance = FALSE,
+      specification = obj$residual_sd_prior$specification,
+      measure = obj$residual_sd_prior$measure,
+      jacobian = obj$residual_sd_prior$jacobian,
       parameter_vector = par
     )
   }
@@ -699,8 +712,11 @@
     obj$fixed_effect_priors$penalty(opt$par)
   kernel_psi_prior_nll <- if (is.null(obj$kernel_psi_sd_prior)) 0 else
     obj$kernel_psi_sd_prior$penalty(opt$par)
+  residual_sd_prior_nll <- if (is.null(obj$residual_sd_prior)) 0 else
+    obj$residual_sd_prior$penalty(opt$par)
   likelihood_nll <- tryCatch(
-    as.numeric(obj$fn(opt$par)) - fixed_prior_nll - kernel_psi_prior_nll,
+    as.numeric(obj$fn(opt$par)) - fixed_prior_nll - kernel_psi_prior_nll -
+      residual_sd_prior_nll,
     error = function(e) NA_real_
   )
   if (length(likelihood_nll) != 1L || !is.finite(likelihood_nll)) {
@@ -727,15 +743,19 @@
     }
   }
 
-  list(
+  components <- list(
     likelihood_nll = likelihood_nll,
     ridge_penalty = ridge_penalty,
     fixed_effect_prior_nll = fixed_prior_nll,
     kernel_psi_sd_prior_nll = kernel_psi_prior_nll,
     optimization_nll = likelihood_nll + ridge_penalty + fixed_prior_nll +
-      kernel_psi_prior_nll,
+      kernel_psi_prior_nll + residual_sd_prior_nll,
     optimizer_reported = as.numeric(opt$objective %||% NA_real_)
   )
+  if (!is.null(obj$residual_sd_prior)) {
+    components$residual_sd_prior_nll <- residual_sd_prior_nll
+  }
+  components
 }
 
 .gllvmTMB_require_unweighted_inference <- function(object, caller, prior_curvature = FALSE) {
@@ -1501,6 +1521,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   .gllvmTMB_kernel_psi_sd_prior_route(
     control$kernel_psi_sd_prior, engine, estimator, REML, control
   )
+  .gllvmTMB_residual_sd_prior_route(
+    control$residual_sd_prior, engine, estimator, REML, control
+  )
   structured_rho <- parsed$structured_rho
   .structured_rho_dispatch_fence(structured_rho, engine,
     control$integration %||% "laplace", estimator, control$aghq %||% FALSE)
@@ -1795,6 +1818,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ">" = "Use Gaussian responses throughout, or omit {.arg known_sigma_eps}."
     ))
   }
+  .gllvmTMB_guard_exact_zero_priors(control, known_sigma_eps)
   ## The marker is not itself an admission rule. Admission comes from the exact
   ## two-source family/source contract, and ONLY from it. The unexported route
   ## sets the marker and must satisfy the contract; a public caller satisfies
@@ -4020,6 +4044,33 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       !masked_response &
       abs(weights_i - 1) > sqrt(.Machine$double.eps)
   )
+  if (!is.null(control$residual_sd_prior)) {
+    if (any(family_id_vec != 0L)) {
+      cli::cli_abort(c(
+        "The prior-table residual-SD Gamma prior currently requires Gaussian responses for every observation.",
+        ">" = "Use a complete Gaussian model or remove the residual-SD prior row."
+      ), class = "gllvmTMB_prior_table_residual_sd_route_unsupported")
+    }
+    if (weighted_objective) {
+      cli::cli_abort(c(
+        "The prior-table residual-SD Gamma prior currently requires unit likelihood weights.",
+        ">" = "Use unit weights or remove the residual-SD prior row."
+      ), class = "gllvmTMB_prior_table_residual_sd_route_unsupported")
+    }
+    if (any(masked_response) ||
+        (missing_meta$n_missing_response %||% 0L) > 0L) {
+      cli::cli_abort(c(
+        "The prior-table residual-SD Gamma prior currently requires complete responses.",
+        ">" = "Remove missing responses or remove the residual-SD prior row."
+      ), class = "gllvmTMB_prior_table_residual_sd_route_unsupported")
+    }
+    if (!is.null(known_sigma_eps) || !is.null(impute)) {
+      cli::cli_abort(c(
+        "The prior-table residual-SD Gamma prior requires an estimated sigma and complete data.",
+        ">" = "Omit known_sigma_eps and imputation, or remove the residual-SD prior row."
+      ), class = "gllvmTMB_prior_table_residual_sd_route_unsupported")
+    }
+  }
   if (weighted_objective) {
     cli::cli_warn(c(
       "Non-unit likelihood weights create a weighted objective, not an ordinary maximum-likelihood fit.",
@@ -4202,6 +4253,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     mi_model <- gll_empty_mi_model()
   }
   use_mi_predictor <- isTRUE(mi_model$enabled)
+  if (!is.null(control$residual_sd_prior) && use_mi_predictor) {
+    cli::cli_abort(c(
+      "The prior-table residual-SD Gamma prior does not yet support missing-predictor models.",
+      ">" = "Use complete predictor data or remove the residual-SD prior row."
+    ), class = "gllvmTMB_prior_table_residual_sd_route_unsupported")
+  }
 
   ## Guard (BUG-4 / issue #399): an mi() variable used ALSO as a structured
   ## random-slope covariate is rejected. mi() imputes only the broadcast FIXED
@@ -8252,7 +8309,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 
   .gllvmTMB_fixed_prior_surface(fixed_prior_spec, tmb_data, family_id_vec,
     link_id_vec, Xcoef_fixed, known_V, lambda_constraint, is_dep_B,
-    missing_meta$n_missing_response %||% 0L)
+    missing_meta$n_missing_response %||% 0L,
+    allow_kernel_psi = !is.null(kernel_psi_sd_prior_spec))
   make_exact_tmb_object <- function(object_data) {
     object <- TMB::MakeADFun(
       data       = object_data,
@@ -8263,7 +8321,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       silent     = silent
     )
     object <- .gllvmTMB_attach_fixed_priors(object, fixed_prior_spec)
-    .gllvmTMB_attach_kernel_psi_sd_prior(object, kernel_psi_sd_prior_spec)
+    object <- .gllvmTMB_attach_kernel_psi_sd_prior(
+      object, kernel_psi_sd_prior_spec
+    )
+    object <- .gllvmTMB_attach_residual_sd_prior(
+      object, control$residual_sd_prior
+    )
+    table_loading_requested <- any(vapply(
+      control$prior_table_resolved %||% list(),
+      function(row) identical(row$class, "loading"), logical(1)
+    ))
+    if (table_loading_requested && !any(names(object$par) == "theta_rr_B")) {
+      cli::cli_abort(c(
+        "The prior-table loading target is unsupported on this model route.",
+        "i" = "A loading ridge requires an ordinary between-unit {.code theta_rr_B} block.",
+        ">" = "Fit a model with an ordinary between-unit {.fn latent} term, or remove the loading row."
+      ), class = "gllvmTMB_prior_table_loading_route_unsupported")
+    }
+    object
   }
   obj <- make_exact_tmb_object(tmb_data)
   if (exact_pair_marginal && (identical(tmb_data$exact_use_woodbury, 1L) ||
@@ -8550,6 +8625,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     fresh <- .gllvmTMB_attach_fixed_priors(fresh, fixed_prior_spec)
     fresh <- .gllvmTMB_attach_kernel_psi_sd_prior(fresh, kernel_psi_sd_prior_spec)
+    fresh <- .gllvmTMB_attach_residual_sd_prior(
+      fresh, control$residual_sd_prior
+    )
     labels <- optimizer_coordinate_labels(par)
     if (!identical(optimizer_coordinate_labels(fresh$par), labels)) {
       return(unavailable("fresh outer-coordinate order differs"))
@@ -8674,6 +8752,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       diagnostic_obj <- .gllvmTMB_attach_fixed_priors(diagnostic_obj, fixed_prior_spec)
       diagnostic_obj <- .gllvmTMB_attach_kernel_psi_sd_prior(
         diagnostic_obj, kernel_psi_sd_prior_spec
+      )
+      diagnostic_obj <- .gllvmTMB_attach_residual_sd_prior(
+        diagnostic_obj, control$residual_sd_prior
       )
     }
     gradient <- if (inherits(diagnostic_obj, "error")) {
@@ -9457,6 +9538,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           obj_try <- .gllvmTMB_attach_fixed_priors(obj_try, fixed_prior_spec)
           obj_try <- .gllvmTMB_attach_kernel_psi_sd_prior(
             obj_try, kernel_psi_sd_prior_spec
+          )
+          obj_try <- .gllvmTMB_attach_residual_sd_prior(
+            obj_try, control$residual_sd_prior
           )
           if (!identical(names(obj_try$par), names(par_cur))) {
             aghq_err <- "AGHQ parameter vector does not align with the Laplace fit"
@@ -10448,6 +10532,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   )
 
+  if (!is.null(obj$residual_sd_prior)) {
+    fit$residual_sd_prior <- list(
+      specification = obj$residual_sd_prior$specification,
+      target_class = obj$residual_sd_prior$target_class,
+      measure = obj$residual_sd_prior$measure,
+      jacobian = obj$residual_sd_prior$jacobian,
+      interpretation = obj$residual_sd_prior$interpretation,
+      calibrated_sampling_covariance = FALSE,
+      density_scale = "natural_standard_deviation"
+    )
+  }
+
   ## One fail-closed PORT restart for the narrow native-Laplace case where
   ## nlminb reports code zero but stops just above the package's unchanged raw
   ## gradient gate.  Eligibility deliberately requires the FIRST solution to
@@ -10877,14 +10973,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ">" = "Inspect prior sensitivity; ordinary profile, bootstrap and prediction-SE intervals are withheld."
     ), class = "gllvmTMB_fixed_prior_map")
   }
+  if (!is.null(fit$residual_sd_prior)) {
+    cli::cli_warn(c(
+      "Residual-SD Gamma priors produce penalized MAP estimates.",
+      "i" = "The normalized Gamma density is on natural sigma, without a log-sigma Jacobian; reported covariance is local approximate posterior curvature, not calibrated sampling uncertainty.",
+      ">" = "Inspect prior sensitivity; profile, bootstrap, and calibrated interval routes are withheld."
+    ), class = "gllvmTMB_residual_sd_prior_map")
+  }
   if (!is.null(fit$kernel_psi_sd_prior)) {
     cli::cli_warn(c(
-      "Kernel Psi half-normal priors produce penalized MAP estimates.",
-      "i" = "The prior density is defined on the natural Psi standard deviations; reported covariance is local approximate posterior curvature, not calibrated sampling uncertainty.",
+      "Kernel Psi SD priors produce penalized MAP estimates.",
+      "i" = "The prior density is on the natural Psi standard deviations without a log-SD Jacobian; reported covariance is local approximate posterior curvature, not calibrated sampling uncertainty.",
       ">" = "Inspect prior sensitivity; profile, bootstrap, and calibrated interval routes are withheld."
     ), class = "gllvmTMB_kernel_psi_prior_map")
   }
-  fit$fit_health <- .gllvmTMB_build_fit_health(fit)
+  fit <- .gllvmTMB_record_fit_convergence(fit)
   if (any(family_id_vec %in% c(17L, 18L, 19L))) {
     fit$fit_health$min_random_curvature <-
       .gllvmTMB_min_random_curvature(fit$tmb_obj, fit$opt$par)

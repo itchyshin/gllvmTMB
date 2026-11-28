@@ -873,9 +873,28 @@ gllvmTMB <- function(
       ">" = "Set {.code engine = \"tmb\"}, or omit {.arg known_sigma_eps}."
     ))
   }
+  ## Keep the caller's pre-adapter controls so update() can replay the exact
+  ## original prior rows without feeding derived fixed-effect controls back
+  ## through the prior-table adapter.
+  prior_table_replay_control <- if (!is.null(control$prior_table)) {
+    control
+  } else {
+    NULL
+  }
+  control <- .gllvmTMB_adapt_prior_table(control)
+  .gllvmTMB_guard_exact_zero_priors(control, known_sigma_eps)
+  if (!is.null(control$prior_table) && !identical(engine, "tmb")) {
+    cli::cli_abort(c(
+      "The generalized prior table currently requires the native TMB engine.",
+      ">" = "Use {.code engine = \"tmb\"}, or omit {.arg priors}."
+    ), class = "gllvmTMB_prior_table_unsupported_engine")
+  }
   .gllvmTMB_fixed_prior_route(control$fixed_effect_priors, engine, estimator, REML, control)
   .gllvmTMB_kernel_psi_sd_prior_route(
     control$kernel_psi_sd_prior, engine, estimator, REML, control
+  )
+  .gllvmTMB_residual_sd_prior_route(
+    control$residual_sd_prior, engine, estimator, REML, control
   )
   if (identical(engine, "julia") &&
       (control$optimizer_passes %||% 1L) > 1L) {
@@ -1019,6 +1038,13 @@ gllvmTMB <- function(
       "i" = "The fit reports a MAP estimate and local approximate posterior curvature only.",
       ">" = "Use {.code ci_method = 'none'} and inspect prior sensitivity."
     ), class = "gllvmTMB_kernel_psi_prior_inference_unsupported")
+  }
+  if (!is.null(control$residual_sd_prior) && !identical(ci_method, "none")) {
+    cli::cli_abort(c(
+      "{.arg ci_method} is not validated for prior-table residual-SD fits.",
+      "i" = "The fit reports a MAP estimate and local approximate posterior curvature only.",
+      ">" = "Use {.code ci_method = 'none'} and inspect prior sensitivity."
+    ), class = "gllvmTMB_prior_table_residual_sd_inference_unsupported")
   }
   ci_defaults <- identical(ci_method, "none") &&
     is.numeric(ci_level) &&
@@ -1882,6 +1908,12 @@ gllvmTMB <- function(
     .fit$temporal <- temporal_spec
     .fit$call <- match.call()
   }
+  if (!is.null(control$prior_table)) {
+    .fit$prior_table <- control$prior_table
+    .fit$prior_table_resolved <- control$prior_table_resolved
+    .fit$prior_table_replay_control <- prior_table_replay_control
+    if (is.null(.fit$call)) .fit$call <- match.call()
+  }
   ## Arc 1A: record resolved integration / criterion / kernel / penalty-eval.
   ## `estimator = "ml"` + `integration = "va"` stays accepted; this only labels
   ## the public ML tag as coarse. Do not reject.
@@ -1890,15 +1922,42 @@ gllvmTMB <- function(
     estimator = estimator,
     reml = REML
   )
+  loading_ridge_active <- (isTRUE(control$loading_ridge_explicit) ||
+    isTRUE(control$aghq_ridge_explicit)) &&
+    is.numeric(control$aghq_ridge) && length(control$aghq_ridge) == 1L &&
+    is.finite(control$aghq_ridge)
+  has_residual_sd_prior <- !is.null(.fit$residual_sd_prior)
   if (!is.null(.fit$fixed_effect_priors) ||
-      !is.null(.fit$kernel_psi_sd_prior)) {
+      !is.null(.fit$kernel_psi_sd_prior) || has_residual_sd_prior) {
     .fit$estimator <- "MAP"
-    .fit$estimator_provenance$criterion_id <- if (!is.null(.fit$kernel_psi_sd_prior)) {
-      "laplace_plus_kernel_psi_sd_prior"
-    } else if (isTRUE(.fit$aghq$used)) {
-      "aghq_plus_normal_priors"
+    if (!is.null(.fit$kernel_psi_sd_prior)) {
+      .fit$estimator_provenance$criterion_id <- "laplace_plus_kernel_psi_sd_prior"
     } else {
-      "laplace_plus_normal_priors"
+      prior_spec <- .fit$fixed_effect_priors$specification %||% NULL
+      prior_types <- if (!is.null(prior_spec) && "distribution" %in% names(prior_spec)) {
+        unique(prior_spec$distribution)
+      } else if (!is.null(prior_spec)) "normal" else character()
+      prior_label <- if (!length(prior_types) && has_residual_sd_prior) {
+        "gamma_residual_sd_prior"
+      } else if (identical(prior_types, "normal")) {
+        "normal_priors"
+      } else if (identical(prior_types, "student_t")) {
+        "student_t_priors"
+      } else if (identical(prior_types, "ridge")) {
+        "fixed_effect_ridge_penalty"
+      } else if (all(prior_types %in% c("normal", "student_t"))) {
+        "mixed_coefficient_priors"
+      } else {
+        "mixed_coefficient_penalties"
+      }
+      if (has_residual_sd_prior && length(prior_types)) {
+        prior_label <- paste0(prior_label, "_and_gamma_residual_sd_prior")
+      }
+      if (loading_ridge_active) {
+        prior_label <- paste0(prior_label, "_and_loading_ridge")
+      }
+      prefix <- if (isTRUE(.fit$aghq$used)) "aghq_plus_" else "laplace_plus_"
+      .fit$estimator_provenance$criterion_id <- paste0(prefix, prior_label)
     }
     ## The fixed-effect prior is applied in R; penalty_eval_id describes the
     ## TMB tape and must not be confused with the MSPL penalty-on tape. Keep the
@@ -1907,12 +1966,31 @@ gllvmTMB <- function(
       !is.null(.fit$fixed_effect_priors)
     .fit$estimator_provenance$kernel_psi_sd_prior_applied <-
       !is.null(.fit$kernel_psi_sd_prior)
+    if (has_residual_sd_prior) {
+      .fit$estimator_provenance$residual_sd_prior_applied <- TRUE
+    }
     .fit$estimator_provenance$public_estimator <- "MAP"
     .fit$estimator_provenance$notes <- sub(
       "public label ML is coarse: this fit uses AGHQ, not Laplace",
       "MAP fit uses AGHQ; integration is recorded separately",
       .fit$estimator_provenance$notes, fixed = TRUE
     )
+  }
+  if (loading_ridge_active) {
+    .fit$estimator <- "MAP"
+    .fit$estimator_provenance$loading_ridge_applied <- TRUE
+    .fit$estimator_provenance$public_estimator <- "MAP"
+    if (is.null(.fit$fixed_effect_priors)) {
+      prefix <- if (isTRUE(.fit$aghq$used)) "aghq_plus_" else "laplace_plus_"
+      .fit$estimator_provenance$criterion_id <- paste0(
+        prefix,
+        if (has_residual_sd_prior) {
+          "gamma_residual_sd_prior_and_loading_ridge"
+        } else {
+          "loading_ridge"
+        }
+      )
+    }
   }
   ## WARN ON AN IMPLAUSIBLE LOADING SCALE -- because the failure is COMMON and SILENT.
   ##
@@ -2846,14 +2924,43 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   rank-one probit example. `dep()`, Julia, MSPL, REML and VA are rejected. Estimates are MAP points; inverse penalized curvature is local
 #'   approximate posterior covariance, not calibrated sampling uncertainty.
 #'   Profile intervals, bootstrap intervals and prediction SEs are withheld.
+#' @param priors Optional unified prior table with `prior`, `class`, and `coef`
+#'   character columns. `class = "fixef"` targets one exact response fixed-effect
+#'   coefficient (`dpar = "mu"`, `scale = "link"`) and supports
+#'   `normal(mean, sd)`, `student_t(location, scale, df)`, or the compatibility
+#'   penalty `ridge(lambda)`. A single `class = "loading"` row supports only the
+#'   existing blanket loading ridge, expressed as `ridge(lambda)`, `coef =
+#'   "all"`, and `scale = "loading_coef"`; it does not select named loading
+#'   coefficients. `class = "residual_sd"` admits one row
+#'   `gamma(mean, shape)` targeting `dpar = "sigma"`,
+#'   `coef = "(Intercept)"`, and `scale = "natural_sd"`. It is currently
+#'   limited to complete, unit-weight Gaussian fits with one estimated
+#'   intercept-only residual SD under native TMB ML Laplace. The normalized
+#'   Gamma density is on natural sigma and adds no log-sigma Jacobian; shape
+#'   must exceed one. `class = "unique_variance"` also admits
+#'   `gamma(mean, shape)` on a named kernel's trait-specific Psi SD, selected by
+#'   `trait`, `kernel`, and `scale = "natural_sd"`; it requires a fitted
+#'   `kernel_latent(..., unique = TRUE)` component. Its normalized density is
+#'   on `sqrt(Psi[t,t])`, with no log-SD Jacobian. Fixed-effect, residual-SD,
+#'   and unique-variance rows can be combined when their model-specific route
+#'   constraints are met. Other group, block, response, latent-score,
+#'   random-effect SD, correlation, and non-mean distributional targets are
+#'   unsupported. The table cannot be combined with `fixed_effect_priors` for
+#'   the same fixed targets or with a legacy loading-ridge control for the
+#'   loading target. The original and resolved rows are retained in
+#'   `fit$prior_table` and `fit$prior_table_resolved`. `update()` is supported
+#'   for prior-table fits and replays the stored rows exactly. Other ordinary
+#'   fits must be refit from their formula and data. Normal, Student-t and Gamma
+#'   densities retain their normalizing constants; ridge rows reproduce the
+#'   existing unnormalized quadratic penalty.
 #' @param kernel_psi_sd_prior Optional data frame with `kernel`, `trait`,
 #'   and `scale` columns. Each row applies an independent half-normal prior
 #'   with density on the natural standard deviation `sqrt(Psi[t,t])` for the
 #'   named kernel and trait. The positive `scale` is expressed in response
 #'   units. The density is evaluated with respect to the natural SD, so the
 #'   objective uses `sigma = exp(log_sigma)` without an additional log-SD
-#'   Jacobian. This prior is opt-in and cannot be combined with
-#'   `fixed_effect_priors` or a loading penalty (`loading_ridge` or a finite
+#'   Jacobian. This prior is opt-in and may be combined with fixed-effect
+#'   priors, but not a loading penalty (`loading_ridge` or a finite
 #'   `aghq_ridge`). It changes neither the default fit nor the loading penalty.
 #'   Omitted kernel and trait pairs remain unpenalized. The half-normal density
 #'   has its mode at zero and does not prevent near-zero estimates; treat it as
@@ -3209,6 +3316,7 @@ gllvmTMBcontrol <- function(
   optimizer_passes = 1L,
   svd_start = TRUE,
   va_polish = TRUE,
+  priors = NULL,
   ...
 ) {
   ## Did the CALLER name `aghq_ridge`, or is this the package default? The
@@ -3397,7 +3505,7 @@ gllvmTMBcontrol <- function(
       "Extra arguments to {.fun gllvmTMBcontrol} are ignored in this version."
     )
   }
-  list(
+  control <- list(
     d_B = d_B,
     d_W = d_W,
     spde_mode = spde_mode,
@@ -3442,6 +3550,11 @@ gllvmTMBcontrol <- function(
     laplace_auto_refit = laplace_auto_refit,
     allow_nongaussian_reml = allow_nongaussian_reml
   )
+  if (!is.null(priors)) {
+    control$prior_table <- priors
+    control$prior_table_resolved <- NULL
+  }
+  control
 }
 
 ## #1196 staged-rollout resolver for `unit` (2026-09-02 full-suite

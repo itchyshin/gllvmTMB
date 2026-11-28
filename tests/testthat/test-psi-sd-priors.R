@@ -1,3 +1,109 @@
+test_that("Gamma kernel Psi SD priors use normalized natural-SD densities", {
+  prior <- data.frame(kernel = c("oak", "pine"), trait = c("t1", "t2"),
+                      shape = c(2.7, 3.6), rate = c(3.1, 1.8))
+  resolve <- function(x, kernels = c("oak", "pine")) {
+    .gllvmTMB_resolve_kernel_psi_sd_prior(
+      x, kernels, c(1L, 1L), c("t1", "t2", "t3"), TRUE
+    )
+  }
+  registry <- resolve(prior)
+  expect_equal(registry$parameter_index, c(1L, 5L))
+  p <- setNames(c(0.3, 0.7, -0.2, 0.5, 0.6, -0.3,
+                  log(c(0.15, 0.4, 0.22, 0.3, 0.25, 0.5))),
+                c(rep("theta_rr_kernel", 6L), rep("log_sd_kernel_diag", 6L)))
+  obj <- list(par = p, fn = function(p) sum(p^2) / 2,
+              gr = function(p) p, he = function(p) diag(length(p)))
+  fit <- .gllvmTMB_attach_kernel_psi_sd_prior(obj, registry)
+  idx <- c(7L, 11L)
+  sd <- exp(p[idx])
+  expected <- -sum(stats::dgamma(sd, shape = prior$shape,
+                                 rate = prior$rate, log = TRUE))
+  expect_equal(fit$kernel_psi_sd_prior$penalty(p), unname(expected),
+               tolerance = 1e-12)
+  expect_equal(unname(fit$gr(p)[idx] - obj$gr(p)[idx]),
+               unname(prior$rate * sd - (prior$shape - 1)), tolerance = 1e-12)
+  increment <- fit$he(p) - obj$he(p)
+  expect_equal(unname(diag(increment)[idx]), unname(prior$rate * sd),
+               tolerance = 1e-12)
+  diag(increment)[idx] <- 0
+  expect_equal(increment, matrix(0, length(p), length(p)))
+  expect_identical(fit$kernel_psi_sd_prior$density, "gamma")
+  expect_identical(fit$kernel_psi_sd_prior$target_names, c("oak:t1", "pine:t2"))
+  expect_identical(fit$kernel_psi_sd_prior$jacobian, FALSE)
+  expect_identical(fit$kernel_psi_sd_prior$likelihood_he, obj$he)
+  expect_identical(fit$kernel_psi_sd_prior$likelihood_fn, obj$fn)
+
+  # Names, rather than term order or prior-row order, select each SD.
+  reversed <- .gllvmTMB_attach_kernel_psi_sd_prior(
+    obj, resolve(prior[2:1, ], c("pine", "oak"))
+  )
+  p_reverse <- p[c(4:6, 1:3, 10:12, 7:9)]
+  expect_equal(reversed$kernel_psi_sd_prior$penalty(p_reverse),
+               fit$kernel_psi_sd_prior$penalty(p), tolerance = 1e-12)
+  single <- .gllvmTMB_resolve_kernel_psi_sd_prior(
+    prior[1L, ], "oak", 1L, c("t1", "t2", "t3"), FALSE
+  )
+  expect_identical(single$parameter_name, "log_sd_phy_diag")
+  expect_equal(single$parameter_index, 1L)
+
+  omitted <- transform(prior[1L, ], kernel = "")
+  inferred <- .gllvmTMB_resolve_kernel_psi_sd_prior(
+    omitted, "oak", 1L, c("t1", "t2", "t3"), FALSE
+  )
+  expect_identical(inferred$kernel, "oak")
+  expect_equal(inferred$parameter_index, 1L)
+  expect_error(.gllvmTMB_resolve_kernel_psi_sd_prior(
+    omitted, c("oak", "pine"), c(1L, 0L),
+    c("t1", "t2", "t3"), TRUE
+  ), class = "gllvmTMB_kernel_psi_prior_target_unknown")
+  inferred_duplicate <- rbind(omitted, prior[1L, ])
+  expect_error(.gllvmTMB_resolve_kernel_psi_sd_prior(
+    inferred_duplicate, "oak", 1L, c("t1", "t2", "t3"), FALSE
+  ), class = "gllvmTMB_kernel_psi_prior_invalid")
+})
+
+test_that("shared prior tables can combine fixed-effect and Psi targets", {
+  prior <- data.frame(kernel = "oak", trait = "t1", shape = 2.7, rate = 3.1)
+  control <- list(
+    integration = "laplace", aghq = FALSE,
+    fixed_effect_priors = data.frame(coefficient = "beta", mean = 0, sd = 1),
+    loading_ridge = NULL, aghq_ridge_explicit = FALSE, aghq_ridge = Inf,
+    prior_table = data.frame(
+      prior = c("normal(0,1)", "gamma(2,3.6)"),
+      class = c("fixef", "unique_variance"), stringsAsFactors = FALSE
+    )
+  )
+  expect_invisible(.gllvmTMB_kernel_psi_sd_prior_route(
+    prior, engine = "tmb", estimator = "ml", REML = FALSE, control = control
+  ))
+  control$fixed_effect_priors <- NULL
+  control$loading_ridge <- 1
+  expect_error(.gllvmTMB_kernel_psi_sd_prior_route(
+    prior, engine = "tmb", estimator = "ml", REML = FALSE, control = control
+  ), class = "gllvmTMB_kernel_psi_prior_penalty_conflict")
+})
+
+test_that("Gamma kernel Psi prior schema rejects ambiguous and invalid inputs", {
+  resolve <- function(x) .gllvmTMB_resolve_kernel_psi_sd_prior(
+    x, c("oak", "pine"), c(1L, 0L), c("t1", "t2", "t3"), TRUE
+  )
+  prior <- data.frame(kernel = "oak", trait = "t1", shape = 2.7, rate = 3.1)
+  invalid <- list(transform(prior, shape = 1), transform(prior, shape = Inf),
+                  transform(prior, shape = NA_real_), transform(prior, rate = 0),
+                  transform(prior, rate = Inf), transform(prior, rate = "3.1"),
+                  transform(prior, scale = 1), prior[setdiff(names(prior), "rate")],
+                  rbind(prior, prior), prior[FALSE, ])
+  for (x in invalid) expect_error(resolve(x),
+                                  class = "gllvmTMB_kernel_psi_prior_invalid")
+  duplicate_names <- prior
+  names(duplicate_names)[4L] <- "shape"
+  expect_error(resolve(duplicate_names), class = "gllvmTMB_kernel_psi_prior_invalid")
+  expect_error(resolve(transform(prior, kernel = "absent")),
+               class = "gllvmTMB_kernel_psi_prior_target_unknown")
+  expect_error(resolve(transform(prior, kernel = "pine")),
+               class = "gllvmTMB_kernel_psi_prior_without_psi")
+})
+
 test_that("kernel Psi SD priors target natural SDs with exact derivatives", {
   registry <- .gllvmTMB_resolve_kernel_psi_sd_prior(
     data.frame(kernel = "k2", trait = "b", scale = 0.5),
@@ -93,6 +199,12 @@ test_that("kernel Psi priors are opt-in and restricted to the documented route",
     prior, "tmb", "ml", FALSE,
     gllvmTMBcontrol(loading_ridge = 1)
   ), class = "gllvmTMB_kernel_psi_prior_penalty_conflict")
+  expect_invisible(.gllvmTMB_kernel_psi_sd_prior_route(
+    prior, "tmb", "ml", FALSE,
+    gllvmTMBcontrol(fixed_effect_priors = data.frame(
+      coefficient = "x", mean = 0, sd = 1
+    ))
+  ))
 })
 
 test_that("two-kernel prior fit reports the separate MAP objective", {
@@ -148,7 +260,13 @@ test_that("two-kernel prior fit reports the separate MAP objective", {
     as.numeric(fit$objective_components$optimization_nll),
     tolerance = 1e-7
   )
-  expect_warning(AIC(fit), "penalised fit")
+  ## AIC warns before delegating to base, and logLik warns when AIC evaluates
+  ## the unpenalised likelihood at this penalised MAP point. Capture both
+  ## distinct warnings so the test documents the reader-facing behavior.
+  expect_warning(
+    expect_warning(AIC(fit), "ordinary likelihood-based interpretation is unsupported"),
+    "unpenalised likelihood evaluated at a penalised MAP point"
+  )
   expect_error(confint(fit), class = "gllvmTMB_fixed_prior_inference_unsupported")
 })
 

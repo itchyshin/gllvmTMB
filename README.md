@@ -34,6 +34,12 @@ show that one trait, species, or treatment causes another to change.
 > boundaries](https://itchyshin.github.io/gllvmTMB/articles/current-limits.html)
 > before reporting a result. A model that converges is not, by itself, evidence
 > that every extension is reliable.
+> Broad package-wide interval coverage is not yet confirmed. A handful of
+> standardized-loading interval calculations have been checked for one Gaussian
+> model, in a few fixed sample-size and rank combinations, and for one fixed simulated dataset with known true values.
+> They are only for fits that converge cleanly. They do not carry over to other
+> sample sizes, ranks, models, or datasets. Total-variance penalty profiles
+> remain approximate; agreement with the exact answer has not been confirmed.
 
 `gllvmTMB` uses **Template Model Builder (TMB)** to fit models by default.
 `GLLVModels.jl` is an optional Julia companion. The experimental
@@ -53,6 +59,7 @@ Julia is not required to install or use the default R workflow.
 | model presence or absence of many species | [Joint species distribution models](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html) |
 | model traits measured repeatedly through time | [Temporal covariance](https://itchyshin.github.io/gllvmTMB/articles/temporal-ar1.html) |
 | check whether a fitted model is interpretable | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) |
+| apply priors to selected coefficients, loadings, the Gaussian residual SD, or a named kernel's unique SD | [Prior table](https://itchyshin.github.io/gllvmTMB/articles/generalized-prior-table.html) |
 | compare primary optimisers for a variational approximation (VA) fit | [Compare VA optimisers](#compare-va-optimisers) |
 | choose another guide | [Browse all articles](https://itchyshin.github.io/gllvmTMB/articles/) |
 

@@ -20,7 +20,7 @@ home:
           [Current limitations and
           boundaries](articles/current-limits.html) before reporting a result.
           A model that converges alone does not establish that every extension
-          is reliable.
+          is reliable. Evidence is limited to pinned unrotated ordinary-Gaussian standardized-loading Wald cells from one frozen DGP, conditional on eligible fits. See the limits page for tested cases and withdrawn methods.
 template:
   bootstrap: 5
   bootswatch: flatly
@@ -144,7 +144,7 @@ navbar:
       menu:
       - text: "Rare binary items and runaway estimates (experimental)"
         href: articles/mspl-binary-jsdm.html
-      - text: "How gllvmTMB is checked and what those checks miss"
+      - text: "How gllvmTMB is checked: what those checks miss"
         href: articles/validation-oracles.html
       - text: "Structured random slopes for non-Gaussian traits: current evidence and limits"
         href: articles/random-slopes-nongaussian.html
@@ -211,6 +211,7 @@ articles:
     - articles/unit-of-analysis
     - articles/gllvm-vocabulary
     - articles/covariance-correlation
+    - articles/generalized-prior-table
     - articles/api-keyword-grid
     - articles/fixed-effect-zero-constraints
     - articles/pre-fit-response-screening

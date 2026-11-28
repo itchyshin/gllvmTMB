@@ -142,6 +142,15 @@ chibar2_pvalue <- function(LRT, q) {
 #'
 #' @export
 variance_lrt <- function(ll_full, ll_reduced, n_boundary = 1L) {
+  if (any(vapply(list(ll_full, ll_reduced), function(x) {
+    inherits(x, "logLik") && isTRUE(attr(x, "penalised"))
+  }, logical(1)))) {
+    cli::cli_abort(c(
+      "{.fn variance_lrt} is not defined for prior-penalised fits.",
+      "i" = "The stored log-likelihood is evaluated at a MAP point, not at its own maximum.",
+      ">" = "Refit both models without priors or penalties before a likelihood-ratio comparison."
+    ), class = "gllvmTMB_variance_lrt_penalised_unsupported")
+  }
   if (!is.numeric(ll_full) || length(ll_full) != 1L || is.na(ll_full) ||
       !is.numeric(ll_reduced) || length(ll_reduced) != 1L || is.na(ll_reduced)) {
     cli::cli_abort(

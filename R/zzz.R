@@ -13,7 +13,13 @@
     "gllvmTMB is experimental. Use a documented tutorial, inspect fit ",
     "diagnostics, and read Current limitations and boundaries before treating ",
     "an estimate or interval as a scientific result. Convergence alone is not ",
-    "enough."
+    "enough. Broad package-wide interval coverage is not yet confirmed. A ",
+    "handful of interval calculations for standardized factor loadings have been checked ",
+    "for one Gaussian model, in a few fixed sample-size and rank combinations, ",
+    "and for one fixed simulated dataset with known true values. The checks ",
+    "apply only for fits that converge cleanly and do not carry over to other ",
+    "sample sizes, ranks, models, or datasets. Total-variance penalty profiles ",
+    "remain approximate; agreement with the exact answer has not been confirmed."
   )
 }
 

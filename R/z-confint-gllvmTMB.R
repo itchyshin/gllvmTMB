@@ -132,6 +132,16 @@
   isTRUE(object$use[[flag]])
 }
 
+## User-facing label for reduced-rank Sigma tiers (latent vs dep()).
+.sigma_rr_tier_label <- function(object) {
+  for (cs in object$covstructs %||% list()) {
+    if (identical(cs$kind, "rr") && isTRUE(cs$extra$.dep)) {
+      return("dep")
+    }
+  }
+  "latent"
+}
+
 ## Internal helper: log-SD parameter block for a diagonal sigma tier.
 .sigma_info_diag_param <- function(info) {
   if (!is.null(info$diag_param)) {
@@ -2104,8 +2114,9 @@ confint.gllvmTMB_multi <- function(
   diag_used <- .sigma_info_diag_used(object, info)
   if (rr_used || !diag_used) {
     if (rr_used) {
+      tier <- .sigma_rr_tier_label(object)
       cli::cli_inform(c(
-        "Wald intervals are not available for {.val {info$display}} on a {.fn latent} tier; {.field lower} and {.field upper} are {.code NA}.",
+        "Wald intervals are not available for {.val {info$display}} on a {.code {tier}()} tier; {.field lower} and {.field upper} are {.code NA}.",
         "i" = "The only standard error available covers the unique-variance part, not the total.",
         ">" = "Use {.code method = \"bootstrap\"}, or for the diagonal {.code profile_ci_total_variance(fit, tier = {.val {info$level}})}."
       ))

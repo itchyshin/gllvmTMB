@@ -5690,6 +5690,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  ## Between-species phylo_latent / phylo_dep need cross-species replication.
+  if (use_phylo_rr) {
+    n_observed_species <- length(unique(data[[species]]))
+    if (n_observed_species < 2L) {
+      cli::cli_abort(c(
+        "Between-species phylogenetic covariance requires at least two distinct levels of {.var {species}} in {.arg data}.",
+        "x" = "Only {n_observed_species} level{?s} present, so tree-based cross-species correlation cannot enter the likelihood.",
+        ">" = "Add observations for multiple species, or remove {.fn phylo_latent}/{.fn phylo_dep} when only one species is observed."
+      ), class = "gllvmTMB_phylo_insufficient_species")
+    }
+  }
+
   ## ---- SPDE preparation -------------------------------------------------
   n_mesh <- 1L
   A_proj <- Matrix::Matrix(0, nrow = 1, ncol = 1, sparse = TRUE)

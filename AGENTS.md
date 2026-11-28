@@ -262,6 +262,19 @@ marked `covered` (with test evidence path), `partial`, or
 `blocked` — see the Writing Style section's scope-boundary
 rule.
 
+**Standard-tier covered flips.** When a pull request changes a
+Standard-tier row in `docs/design/35-validation-debt-register.md`
+to `covered`, the **same pull request** must satisfy the
+**Standard-Tier Covered-Flip Gate** in that register: (1)
+component vs derived estimand evidence (comparator for
+components; identity tests plus pinned citations for derived
+quantities), (2) a named textbook or example anchor or an
+explicit no-anchor disclosure on public surfaces, (3) Darwin
+biology sign-off that the estimand is the intended one, and
+(4) user-facing argument names and routing grammar frozen
+before the flip. Rose records the audit; no status flip without
+all four.
+
 ## CI Pacing Discipline
 
 The default CI workflow (`.github/workflows/R-CMD-check.yaml`) runs

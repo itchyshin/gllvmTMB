@@ -214,8 +214,10 @@ The compact RHS shorthand is:
 
 | Wide shorthand | Long expansion |
 |----------------|----------------|
+| *(implicit intercept, same as `1 +`)* | Leading `0 + trait` when the compact RHS has an R intercept (`~ env`, `~ env + latent(...)`, `~ latent(...)` alone, and so on) |
+| `0`, `-1`, or `+0` on the RHS | No leading `0 + trait` |
 | `1` | `0 + trait` |
-| `env` | `(0 + trait):env` |
+| `env` | `(0 + trait):env` (with implicit or explicit intercept) |
 | `latent(1 \| g, d = K)` | `latent(0 + trait \| g, d = K)` |
 | `latent(1 \| g, d = K, lv = ~ x_lv)` | `latent(0 + trait \| g, d = K, lv = ~ x_lv)` for the current ordinary unit-tier C1 surface |
 | `latent(1 + env \| g, d = K)` | `latent(0 + trait + (0 + trait):env \| g, d = K)` |

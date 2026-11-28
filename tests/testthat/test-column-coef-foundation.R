@@ -167,6 +167,19 @@ test_that("shared fixed effects are common while ordinary wide effects stay trai
   expect_identical(colnames(X_common), c("(Intercept)", "latitude"))
   expect_equal(unname(X_common[, "latitude"]), common$data_long$latitude)
   expect_true(all(grepl("trait", colnames(X_ordinary))))
+
+  ## `~ shared(x)` follows the R intercept default: per-trait intercepts plus
+  ## one common slope. Skipping injection here would reintroduce #1757.
+  implicit_shared <- rewrite_traits_lhs(
+    traits(sp_a, sp_b, sp_c) ~ shared(latitude), data = wide
+  )
+  X_implicit_shared <- stats::model.matrix(
+    stats::delete.response(stats::terms(implicit_shared$formula_long)),
+    implicit_shared$data_long
+  )
+  expect_equal(ncol(X_implicit_shared), 4L)
+  expect_true("latitude" %in% colnames(X_implicit_shared))
+  expect_equal(sum(grepl("trait", colnames(X_implicit_shared))), 3L)
 })
 
 test_that("an existing user-defined shared() transformation is preserved", {
@@ -179,6 +192,8 @@ test_that("an existing user-defined shared() transformation is preserved", {
   )
   rendered <- paste(deparse(rewrite$formula_long), collapse = " ")
   expect_match(rendered, "trait.*shared\\(latitude\\)")
+  rhs <- paste(deparse(rewrite$formula_long[[3L]]), collapse = " ")
+  expect_match(rhs, "^0 \\+ trait")
 })
 
 test_that("shared has the same common fixed-effect meaning in long preprocessing", {

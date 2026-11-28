@@ -557,7 +557,7 @@ test_that("multivariate broadcast: one unit-level mi(x) feeds both traits", {
   wide$x[d$missing] <- NA_real_
 
   fit <- suppressMessages(suppressWarnings(gllvmTMB(
-    traits(t1, t2) ~ z + mi(x) + (1 | site),
+    traits(t1, t2) ~ 1 + z + mi(x) + (1 | site),
     data    = wide,
     unit    = "site",
     family  = gaussian(),

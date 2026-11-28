@@ -144,9 +144,9 @@ navbar:
       menu:
       - text: "Rare binary items and runaway estimates (experimental)"
         href: articles/mspl-binary-jsdm.html
-      - text: "How gllvmTMB is checked and what those checks miss"
+      - text: "How gllvmTMB is checked — and what those checks miss"
         href: articles/validation-oracles.html
-      - text: "Structured random slopes for non-Gaussian traits: current evidence and limits"
+      - text: "Structured random slopes for non-Gaussian traits — current evidence and limits"
         href: articles/random-slopes-nongaussian.html
 
 articles:

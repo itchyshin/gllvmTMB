@@ -107,3 +107,53 @@ testthat::test_that("validation-debt register evidence-column paths exist", {
     )
   )
 })
+
+testthat::test_that("validation-debt register documents Standard-Tier Covered-Flip Gate", {
+  root <- testthat::test_path("..", "..")
+  register <- file.path(root, "docs", "design", "35-validation-debt-register.md")
+  testthat::skip_if_not(file.exists(register), "register file not found (not a source checkout)")
+
+  text <- paste(readLines(register, warn = FALSE, encoding = "UTF-8"), collapse = " ")
+  text <- gsub("\\s+", " ", text)
+
+  gate_markers <- c(
+    "Standard-Tier Covered-Flip Gate",
+    "Component vs derived estimands",
+    "Textbook-anchor sub-gate",
+    "no-anchor disclosure",
+    "Biology sign-off",
+    "biologically meaningful estimand",
+    "User-facing argument-name freeze"
+  )
+  missing <- gate_markers[!vapply(gate_markers, grepl, fixed = TRUE, FUN.VALUE = logical(1), x = text)]
+
+  testthat::expect_true(
+    length(missing) == 0L,
+    info = paste0(
+      "Register header must document all four Covered-Flip Gate requirements; ",
+      "missing marker(s):\n",
+      paste(missing, collapse = "\n")
+    )
+  )
+
+  testthat::expect_true(
+    grepl("same PR as the status flip", text, fixed = TRUE),
+    info = "Gate must require the four checks in the same PR as the covered flip"
+  )
+  testthat::expect_true(
+    grepl("identity test", text, ignore.case = TRUE),
+    info = "Gate must require identity tests for derived estimands"
+  )
+  testthat::expect_true(
+    grepl("pinned citation", text, ignore.case = TRUE),
+    info = "Gate must require pinned citations for derived estimands"
+  )
+  testthat::expect_true(
+    grepl("same-estimand comparator", text, ignore.case = TRUE),
+    info = "Gate must require comparator evidence for component estimands"
+  )
+  testthat::expect_true(
+    grepl("frozen \\*\\*before\\*\\*", text),
+    info = "Gate must freeze user-facing argument names before the flip"
+  )
+})

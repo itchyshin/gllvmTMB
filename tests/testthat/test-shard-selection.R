@@ -48,3 +48,16 @@ test_that("the filter selects each file exactly once across shards", {
     }
   }
 })
+
+test_that("#1765 animal cluster abort tests participate in the four-way shard partition", {
+  files <- sort(list.files(".", pattern = "^test-.*\\.[Rr]$"), method = "radix")
+  skip_if(length(files) == 0L, "no test files visible from the working directory")
+  stripped <- sub("\\.[Rr]$", "", sub("^test-", "", files))
+  target <- "fix-1765-animal-cluster-abort"
+  skip_if(!target %in% stripped, "abort test file not present")
+  n <- 4L
+  hits <- vapply(seq_len(n), function(k) {
+    grepl(gllvm_shard_filter(".", paste0(k, "/", n)), target)
+  }, logical(1L))
+  expect_equal(sum(hits), 1L)
+})

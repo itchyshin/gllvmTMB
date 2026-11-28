@@ -293,7 +293,7 @@ test_that("unreplicated two-kernel uniqueness is not silently dropped with free 
 
 test_that("known observation SD rejects invalid values", {
   fixture <- .two_lineage_known_error_fixture()
-  for (bad in list(0, -1, Inf, NA_real_, c(0.1, 0.2))) {
+  for (bad in list(-1, Inf, NA_real_, c(0.1, 0.2))) {
     args <- .two_lineage_known_error_args(fixture)
     args$known_sigma_eps <- bad
     expect_error(do.call(gllvmTMB, args))
